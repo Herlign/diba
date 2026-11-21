@@ -11,6 +11,7 @@ export default defineConfig({
       "src/lib/passes/**/*.test.ts",
       "src/lib/auth/**/*.test.ts",
       "src/lib/kitchen/**/*.test.ts",
+      "src/lib/rate-limit.test.ts",
     ],
   },
   resolve: {

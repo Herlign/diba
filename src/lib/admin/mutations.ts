@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { can } from "@/lib/auth/access"
 import { getStaff } from "@/lib/auth/session"
+import { rateLimit } from "@/lib/rate-limit"
 import { assessRedemption } from "@/lib/passes/redeem"
 import { lagosDateKey } from "@/lib/ordering/rules"
 import { verifyPassToken } from "@/lib/passes/token"
@@ -227,6 +228,9 @@ export async function markSlotDelivered(formData: FormData) {
 export async function redeemPass(token: string) {
   const staff = await allow("dispatch")
   if (!staff) return { ok: false as const, reason: "Dispatch or an admin has to scan this." }
+  if (!rateLimit(`redeem:${staff.id}`, 40, 10 * 60 * 1000)) {
+    return { ok: false as const, reason: "Too many scans. Wait a minute and try again." }
+  }
   const secret = process.env.PASS_TOKEN_SECRET || ""
   const verified = secret ? verifyPassToken(token.trim(), secret) : null
   const row = verified

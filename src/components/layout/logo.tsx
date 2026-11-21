@@ -9,7 +9,7 @@ export function Logo() {
         <circle cx="16" cy="16" r="2.6" fill="#c81d25" />
       </svg>
       <span className="font-heading text-lg leading-none tracking-tight">
-        Diba <span className="text-gold">Meals</span>
+        Diba <span className="text-[#6a4b00]">Meals</span>
       </span>
     </Link>
   )

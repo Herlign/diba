@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { MapPin, Minus, Plus } from "lucide-react"
 import { FoodImage } from "@/components/food-image"
 import { useCart } from "@/lib/cart/store"
@@ -10,6 +10,7 @@ import { formatWindow } from "@/lib/dates"
 import { quoteTotals, selectionSatisfiesPlan, type PricedSlot } from "@/lib/ordering/rules"
 import type { OrderingItem, OrderingProgramme, OrderingSlot, OrderingVariant } from "@/lib/ordering/types"
 import type { FoodPhoto } from "@/lib/food-photos"
+import { track } from "@/lib/analytics"
 
 function photoFor(item: OrderingItem): FoodPhoto {
   return { src: item.imageUrl, alt: item.name, label: item.name, credit: "", href: "" }
@@ -29,6 +30,9 @@ export function OrderingExperience({ programme }: { programme: OrderingProgramme
   const [variantChoice, setVariantChoice] = useState<Record<string, string>>({})
   const [draft, setDraft] = useState<{ item: OrderingItem; variant: OrderingVariant; quantity: number; slotIds: string[] } | null>(null)
   const days = programme.dateKeys
+  useEffect(() => {
+    track("view_programme", { slug: programme.slug, title: programme.title })
+  }, [programme.slug, programme.title])
 
   function chooseSlot(slot: OrderingSlot) {
     if (slot.state !== "open") return
@@ -372,6 +376,13 @@ export function OrderingExperience({ programme }: { programme: OrderingProgramme
                 className="h-11 rounded-lg bg-gold px-4 text-sm font-semibold text-ink disabled:opacity-40"
                 onClick={() => {
                   addToSlots(programme.id, draft.slotIds, draft.variant.id, draft.quantity)
+                  track("add_to_cart", {
+                    slug: programme.slug,
+                    item: draft.item.name,
+                    variant: draft.variant.name,
+                    quantity: draft.quantity,
+                    slots: draft.slotIds.length,
+                  })
                   setDraft(null)
                 }}
               >

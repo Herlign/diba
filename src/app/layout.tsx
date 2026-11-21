@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { Fraunces, Outfit } from "next/font/google"
+import { AnalyticsScripts } from "@/components/analytics/scripts"
 import { SiteChrome } from "@/components/layout/site-chrome"
 import "./globals.css"
 
@@ -46,6 +47,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           Skip to content
         </a>
+        <AnalyticsScripts gtmId={process.env.NEXT_PUBLIC_GTM_ID} pixelId={process.env.NEXT_PUBLIC_META_PIXEL_ID} />
         <SiteChrome>{children}</SiteChrome>
       </body>
     </html>

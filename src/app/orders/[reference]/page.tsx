@@ -8,6 +8,7 @@ import { formatDayLabel, formatWindow } from "@/lib/dates"
 import { formatNaira } from "@/lib/money"
 import { tokensMatch } from "@/lib/secret-match"
 import { siteUrl } from "@/lib/site"
+import { TrackPurchase } from "@/components/analytics/track-purchase"
 
 export const instant = false
 
@@ -67,6 +68,7 @@ export default async function OrderConfirmationPage({
   return (
     <div className="bg-white pb-16 text-ink">
       <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+        {paid ? <TrackPurchase reference={order.reference} value={order.totalKobo} /> : null}
         <p className="text-sm font-semibold tracking-wide text-palm uppercase">{paid ? "You're all set" : "Order"}</p>
         <h1 className="mt-2 font-heading text-4xl">{order.programme.title}</h1>
         <p className="mt-2 text-sm text-muted-foreground">

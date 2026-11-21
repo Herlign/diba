@@ -2,10 +2,11 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useCart, useCartHydrated } from "@/lib/cart/store"
 import { formatNaira } from "@/lib/money"
 import { confirmMockPayment, placeOrder, verifyPayment } from "@/lib/checkout/actions"
+import { track } from "@/lib/analytics"
 
 type DeliveryPoint = { id: string; name: string; description: string }
 
@@ -40,6 +41,9 @@ export function CheckoutExperience({ programme, sheet }: { programme: Programme;
     slots: Object.entries(cart?.items ?? {}).map(([mealSlotId, items]) => ({ mealSlotId, items })),
   }
   const hasItems = payload.slots.some((slot) => slot.items.length > 0)
+  useEffect(() => {
+    if (ready && hasItems && !sheet) track("begin_checkout", { slug: programme.slug })
+  }, [ready, hasItems, sheet, programme.slug])
 
   async function submit(formData: FormData) {
     setError("")
@@ -144,7 +148,7 @@ export function CheckoutExperience({ programme, sheet }: { programme: Programme;
                   I understand orders close {programme.cutoffHours} hours before each meal. A cancelled slot becomes a refund request for the church team. Nothing is refunded automatically.
                 </span>
               </label>
-              {error ? <p className="text-sm text-tomato">{error}</p> : null}
+              {error ? <p className="text-sm text-tomato" role="alert">{error}</p> : null}
               <button type="submit" disabled={pending || !ready} className="inline-flex h-12 items-center rounded-lg bg-palm px-5 text-sm font-semibold text-cream disabled:opacity-40">
                 {pending ? "Reserving seats…" : "Pay"}
               </button>

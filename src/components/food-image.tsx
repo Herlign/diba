@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useState } from "react"
 import type { FoodPhoto } from "@/lib/food-photos"
 import { cn } from "@/lib/utils"
@@ -32,15 +33,14 @@ export function FoodImage({
   }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- failed photos need an onError fallback
-    <img
+    <Image
       src={photo.src}
       alt={photo.alt}
-      loading={priority ? "eager" : "eager"}
-      decoding="async"
-      fetchPriority={priority ? "high" : "auto"}
+      fill
+      sizes="(max-width: 640px) 100vw, 480px"
+      priority={priority}
       onError={() => setFailed(true)}
-      className={cn("absolute inset-0 h-full w-full object-cover", className)}
+      className={cn("object-cover", className)}
       style={{ objectPosition: photo.focus ?? "center" }}
     />
   )

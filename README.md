@@ -2,7 +2,7 @@
 
 Diba Meals is a meal pre-order app for multi-day Nigerian church programmes. An attendee finds a programme, picks days and meal periods, pays, and collects a meal pass for each slot at the venue.
 
-This repository is through **Phase 4 (admin and ops)**: checkout and payments, plus staff sign-in, the ops dashboard, kitchen prep sheets, and dispatch with a pass scanner. Polish, analytics, and the Playwright suite come in a later phase.
+This repository is through **Phase 5 (polish)**: the ordering and ops product, with security headers, optional analytics, dynamic Open Graph images, rate limits, and a Playwright pass of the mock checkout.
 
 ## Run it
 
@@ -35,6 +35,7 @@ Leave `RESEND_API_KEY` blank to print confirmation and magic-link emails in the 
 npm run lint
 npm run typecheck
 npm test
+npm run test:e2e          # needs the app already running on port 4317
 npx prisma migrate dev    # after a schema change
 ```
 
@@ -77,12 +78,61 @@ Re-running the seed wipes and reloads these rows.
 | Kitchen | kitchen@dibameals.test | DibaKitchen!2026 |
 | Dispatch | dispatch@dibameals.test | DibaDispatch!2026 |
 
-Staff sign in at `/admin/login`. The kitchen opens `/admin/kitchen`, dispatch opens `/admin/dispatch`, and an admin sees the full dashboard. Pass scans only succeed on the meal's day, inside the delivery window (45 minutes either side), and a pass works once.
+Staff sign in at `/admin/login`. The kitchen opens `/admin/kitchen`, dispatch opens `/admin/dispatch`, and an admin sees the full dashboard. Pass scans only succeed on the meal's day, inside the delivery window (45 minutes either side), and a pass works once. The passwords in the table above are seed data. Replace them before a public launch.
+
+## Deploy
+
+Production target is Vercel, with Postgres on Neon or Supabase. Paystack, Resend, and the hold-release cron are configured after the first deploy.
+
+1. Create a Postgres database. Copy its connection string into `DATABASE_URL`. It must include `?sslmode=require` on Neon and Supabase.
+2. Push this repo to GitHub and import it in Vercel. Framework preset: Next.js. Set the env vars below in the Vercel project before the first build.
+3. `NEXT_PUBLIC_SITE_URL` must be the real `https://` origin. Vercel bakes `NEXT_PUBLIC_*` at build time, so change it and redeploy if the domain moves.
+4. After the first successful deploy, run `npx prisma migrate deploy` against that database (Vercel does not run migrations for you) and then `npx prisma db seed` once. Do not seed production passwords into a public database. Create real staff from the admin invite form and then disable the seed accounts.
+5. Paystack: create live keys. Set `PAYMENTS_MODE=live`, `PAYSTACK_SECRET_KEY`, and `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`. In the Paystack dashboard set the webhook to `https://<domain>/api/paystack/webhook`. Paystack signs the raw body with HMAC SHA512. The handler rejects a bad signature and applies a successful charge only once, and only when the amount in kobo and the currency are NGN matching the order.
+6. Resend: verify the sending domain, then set `RESEND_API_KEY` and `EMAIL_FROM` to an address on that domain, such as `Diba Meals <orders@yourdomain>`. With no key, mail is printed to the server log and the magic link is shown on the page.
+7. Cron: call `GET https://<domain>/api/cron/release-holds` every 10 minutes with header `Authorization: Bearer <CRON_SECRET>`. Vercel Cron can hit that path. It cancels `PENDING_PAYMENT` orders older than 30 minutes so the seat is free. The seat count already ignores those holds. The cron just closes the rows.
+8. Google Maps: restrict `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` by HTTP referrer to the production domain. Keep `GOOGLE_MAPS_API_KEY` server-side. Places is for admin venue setup.
+9. Analytics is off until `NEXT_PUBLIC_GTM_ID` and/or `NEXT_PUBLIC_META_PIXEL_ID` are set. The app then sends `view_programme`, `add_to_cart`, `begin_checkout`, and `purchase`.
+10. Rate limits, in memory per server instance: checkout 8 per phone per 10 minutes, magic links 5 per email per 10 minutes, staff login 8 per email per 10 minutes, pass scans 40 per staff member per 10 minutes. A multi-instance host does not share that counter. Put a shared store in front of it before a large launch.
+
+### Launch checklist
+
+- [ ] `DATABASE_URL` points at production Postgres and `npx prisma migrate deploy` has been run
+- [ ] Seed accounts are removed or their passwords changed
+- [ ] `AUTH_SECRET` and `PASS_TOKEN_SECRET` are long random strings, not the dev placeholders
+- [ ] `NEXT_PUBLIC_SITE_URL` is the production origin
+- [ ] `PAYMENTS_MODE=live` and both Paystack keys are the live pair
+- [ ] Paystack webhook URL is saved and a test charge updates one order once
+- [ ] Resend domain is verified and a confirmation email arrives
+- [ ] Cron hits `/api/cron/release-holds` with `CRON_SECRET`
+- [ ] Maps key is referrer-restricted
+- [ ] `npm test` and `npm run test:e2e` pass against the release build
+- [ ] A phone can open a programme, pay in test or live, and show a meal pass
+
+### Env vars
+
+| Variable | Required in production |
+| --- | --- |
+| `DATABASE_URL` | Yes |
+| `NEXT_PUBLIC_SITE_URL` | Yes |
+| `AUTH_SECRET` | Yes |
+| `PASS_TOKEN_SECRET` | Yes |
+| `PAYMENTS_MODE` | Yes (`live` or `mock`) |
+| `PAYSTACK_SECRET_KEY` | Yes when live |
+| `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | Yes when live |
+| `RESEND_API_KEY` | Yes, to send mail |
+| `EMAIL_FROM` | Yes, on the verified domain |
+| `CRON_SECRET` | Yes |
+| `NEXT_PUBLIC_WHATSAPP_E164` | Yes, support number |
+| `NEXT_PUBLIC_GTM_ID` | No |
+| `NEXT_PUBLIC_META_PIXEL_ID` | No |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | No, admin places |
+| `GOOGLE_MAPS_API_KEY` | No |
 
 ## Later phases
 
 1. Foundation
 2. Programme page, day × period grid, menu, plans, cart, priced review, business-rule tests
 3. Checkout, Paystack and mock mode, webhook, meal passes, email, my orders
-4. Admin, kitchen sheet, dispatch scanner, promo codes (this app)
-5. Dynamic OG images, analytics events, rate limits, Playwright, deploy checklist
+4. Admin, kitchen sheet, dispatch scanner, promo codes
+5. SEO and OG images, analytics, rate limits, security headers, Playwright, deploy guide (this app)

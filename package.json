@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run && tsx --test src/lib/money.test.ts src/lib/dates.test.ts src/lib/phone.test.ts src/lib/programme-query.test.ts",
+    "test:e2e": "playwright test",
     "postinstall": "prisma generate"
   },
   "prisma": {
@@ -35,6 +36,7 @@
     "zustand": "^5.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/turbopack": "4.3.3",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
