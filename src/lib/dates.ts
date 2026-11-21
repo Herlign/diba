@@ -29,6 +29,16 @@ export function formatWindow(start: string, end: string) {
   return `${formatClock(start)}–${formatClock(end)}`
 }
 
+export function formatDayLabel(date: Date) {
+  return formatInTimeZone(date, LAGOS, "EEE d MMM")
+}
+
+export function formatLagosMoment(date: Date) {
+  const day = formatInTimeZone(date, LAGOS, "EEE d MMM")
+  const clock = formatInTimeZone(date, LAGOS, "HH:mm")
+  return `${day}, ${formatClock(clock)}`
+}
+
 export function formatClock(hhmm: string) {
   const [hourText, minuteText] = hhmm.split(":")
   const hour = Number(hourText)

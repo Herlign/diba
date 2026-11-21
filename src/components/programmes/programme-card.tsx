@@ -63,7 +63,7 @@ export function ProgrammeCard({ programme }: { programme: ProgrammeCardData }) {
             {programme.fromKobo === null ? "Menu soon" : formatNaira(programme.fromKobo)}
           </span>
           <Link
-            href={`/programmes#${programme.slug}`}
+            href={`/p/${programme.slug}`}
             className="inline-flex h-11 min-w-11 items-center rounded-lg bg-palm px-4 text-sm font-semibold text-cream"
           >
             Order meals

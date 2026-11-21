@@ -2,7 +2,7 @@
 
 Diba Meals is a meal pre-order app for multi-day Nigerian church programmes. An attendee finds a programme, picks days and meal periods, pays, and collects a meal pass for each slot at the venue.
 
-This repository is **Phase 1 (foundation)**: the Next.js app, design tokens, the Prisma schema for all five phases, seed data, the landing page, and the programme list. Ordering, Paystack, passes, and admin screens come in later phases.
+This repository is through **Phase 2 (ordering)**: the Next.js app, design tokens, the Prisma schema for all five phases, seed data, the landing page, the programme list, and the ordering flow (day × meal-period grid, menu, meal plans, cart, and priced review). Paystack, passes, and admin screens come in later phases.
 
 ## Run it
 
@@ -16,7 +16,14 @@ npx prisma db seed
 npm run dev
 ```
 
-Open [http://127.0.0.1:4317](http://127.0.0.1:4317).
+Open [http://127.0.0.1:4317](http://127.0.0.1:4317). A production build uses the same port:
+
+```bash
+npm run build
+npm start
+```
+
+Ordering lives at `/p/<slug>` (for example `/p/crossover-convention-2026`) and a short code redirects from `/c/CROSS26`. The review page is `/p/<slug>/review`. `PAYMENTS_MODE=mock` is enough for this phase; checkout is not wired yet.
 
 ```bash
 npm run lint
@@ -68,8 +75,8 @@ Staff sign-in is phase 4. The hashes are in the database so that phase does not 
 
 ## Later phases
 
-1. Foundation (this app)
-2. Programme page, day × period grid, menu, plans, cart, business-rule tests
+1. Foundation
+2. Programme page, day × period grid, menu, plans, cart, priced review, business-rule tests (this app)
 3. Checkout, Paystack and mock mode, webhook, meal passes, email, my orders
 4. Admin, kitchen sheet, dispatch scanner, promo codes
 5. Dynamic OG images, analytics events, rate limits, Playwright, deploy checklist
