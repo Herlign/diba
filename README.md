@@ -2,7 +2,7 @@
 
 Diba Meals is a meal pre-order app for multi-day Nigerian church programmes. An attendee finds a programme, picks days and meal periods, pays, and collects a meal pass for each slot at the venue.
 
-This repository is through **Phase 2 (ordering)**: the Next.js app, design tokens, the Prisma schema for all five phases, seed data, the landing page, the programme list, and the ordering flow (day × meal-period grid, menu, meal plans, cart, and priced review). Paystack, passes, and admin screens come in later phases.
+This repository is through **Phase 3 (checkout and payments)**: the ordering flow, registration, a server-side checkout that re-prices and re-checks capacity, Paystack with `PAYMENTS_MODE=mock`, a signed webhook, QR meal passes, confirmation email, and my-orders via a magic link. Admin and kitchen screens come in later phases.
 
 ## Run it
 
@@ -23,7 +23,13 @@ npm run build
 npm start
 ```
 
-Ordering lives at `/p/<slug>` (for example `/p/crossover-convention-2026`) and a short code redirects from `/c/CROSS26`. The review page is `/p/<slug>/review`. `PAYMENTS_MODE=mock` is enough for this phase; checkout is not wired yet.
+Ordering lives at `/p/<slug>` (for example `/p/crossover-convention-2026`) and a short code redirects from `/c/CROSS26`. Review is `/p/<slug>/review`, checkout is `/p/<slug>/checkout`, and a paid order opens at `/orders/<reference>?token=...`. My orders is `/my-orders`.
+
+`PAYMENTS_MODE=mock` reserves the seats and shows a "Mark as paid" step. No card is charged. Set `PAYMENTS_MODE=live` with `PAYSTACK_SECRET_KEY` and `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` to open Paystack Popup. The webhook is `https://<host>/api/paystack/webhook` (HMAC SHA512 of the raw body). For a local webhook, tunnel with ngrok and paste that HTTPS URL into the Paystack dashboard. Point Paystack at the test secret.
+
+Leave `RESEND_API_KEY` blank to print confirmation and magic-link emails in the server log. With a key, mail goes out through Resend from `EMAIL_FROM`.
+
+`GET /api/cron/release-holds` with `Authorization: Bearer $CRON_SECRET` cancels `PENDING_PAYMENT` orders older than 30 minutes so the seat count matches the hold window.
 
 ```bash
 npm run lint
@@ -76,7 +82,7 @@ Staff sign-in is phase 4. The hashes are in the database so that phase does not 
 ## Later phases
 
 1. Foundation
-2. Programme page, day × period grid, menu, plans, cart, priced review, business-rule tests (this app)
-3. Checkout, Paystack and mock mode, webhook, meal passes, email, my orders
+2. Programme page, day × period grid, menu, plans, cart, priced review, business-rule tests
+3. Checkout, Paystack and mock mode, webhook, meal passes, email, my orders (this app)
 4. Admin, kitchen sheet, dispatch scanner, promo codes
 5. Dynamic OG images, analytics events, rate limits, Playwright, deploy checklist

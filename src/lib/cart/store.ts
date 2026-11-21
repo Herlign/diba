@@ -20,6 +20,7 @@ type CartStore = {
   addToSlots: (programmeId: string, slotIds: string[], variantId: string, quantity: number) => void
   setQuantity: (programmeId: string, slotId: string, variantId: string, quantity: number) => void
   removeSlot: (programmeId: string, slotId: string) => void
+  clearProgramme: (programmeId: string) => void
 }
 
 const empty = (): ProgrammeCart => ({ planId: null, selectedSlotIds: [], items: {} })
@@ -101,6 +102,12 @@ export const useCart = create<CartStore>()(
           if (lines.length === 0) delete items[slotId]
           else items[slotId] = lines
           return { carts: { ...state.carts, [programmeId]: { ...cart, items } } }
+        }),
+      clearProgramme: (programmeId) =>
+        set((state) => {
+          const carts = { ...state.carts }
+          delete carts[programmeId]
+          return { carts }
         }),
       removeSlot: (programmeId, slotId) =>
         set((state) => {

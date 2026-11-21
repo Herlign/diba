@@ -330,14 +330,16 @@ model Order {
   mealPlanId        String?
   mealPlan          MealPlan?   @relation(fields: [mealPlanId], references: [id])
   paystackReference String?     @unique
+  needsReview       Boolean     @default(false)
   isGroupOrder      Boolean     @default(false)
   groupName         String?
   accessToken       String      @unique
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
-  slots   OrderSlot[]
-  payment Payment?
+  slots          OrderSlot[]
+  payment        Payment?
+  refundRequests RefundRequest[]
 
   @@index([programmeId, status])
   @@index([attendeeId])
@@ -357,7 +359,8 @@ model OrderSlot {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
-  items OrderItem[]
+  items          OrderItem[]
+  refundRequests RefundRequest[]
 
   @@unique([orderId, mealSlotId])
   @@index([mealSlotId, status])
@@ -391,6 +394,21 @@ model Payment {
   paidAt     DateTime?
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
+}
+
+/// A cancellation before cutoff. Admin marks the refund in a later phase; nothing is refunded automatically.
+model RefundRequest {
+  id          String    @id @default(cuid())
+  orderId     String
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderSlotId String
+  orderSlot   OrderSlot @relation(fields: [orderSlotId], references: [id], onDelete: Cascade)
+  status      String    @default("REQUESTED")
+  note        String    @default("")
+  createdAt   DateTime  @default(now())
+
+  @@index([orderId])
+  @@index([status])
 }
 
 model StaffUser {

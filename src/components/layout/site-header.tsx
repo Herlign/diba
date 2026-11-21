@@ -10,6 +10,9 @@ export function SiteHeader() {
           <Link href="/programmes" className="link-fade hidden text-sm font-semibold text-ink/80 sm:inline hover:text-palm">
             Programmes
           </Link>
+          <Link href="/my-orders" className="link-fade text-sm font-semibold text-ink/80 hover:text-palm">
+            My orders
+          </Link>
           <Link
             href="/programmes"
             className="link-fade inline-flex h-10 items-center rounded-lg bg-palm px-3 text-sm font-semibold text-cream sm:px-4"

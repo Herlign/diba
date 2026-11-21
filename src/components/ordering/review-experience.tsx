@@ -122,10 +122,16 @@ export function ReviewExperience({ programmeId, slug, title }: { programmeId: st
         ) : (
           <p className="mt-6 text-sm text-muted-foreground">Pricing this list…</p>
         )}
-        <Link href={`/p/${slug}`} className="mt-6 inline-flex h-12 items-center text-sm font-semibold text-palm">
-          Edit slots and plates
-        </Link>
-        <p className="mt-4 text-sm text-muted-foreground">Checkout and payment come next. This page is the priced review.</p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          {quote ? (
+            <Link href={`/p/${slug}/checkout`} className="inline-flex h-12 items-center rounded-lg bg-palm px-5 text-sm font-semibold text-cream">
+              Continue to checkout
+            </Link>
+          ) : null}
+          <Link href={`/p/${slug}`} className="inline-flex h-12 items-center text-sm font-semibold text-palm">
+            Edit slots and plates
+          </Link>
+        </div>
       </div>
     </div>
   )
