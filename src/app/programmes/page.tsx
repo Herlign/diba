@@ -1,42 +1,40 @@
 import { Suspense } from "react"
-import { ProgrammeFilters } from "@/components/programmes/programme-filters"
-import { ProgrammeList, ProgrammeListSkeleton } from "@/components/programmes/programme-list"
-import { parseListStatus } from "@/lib/domain"
-import { listProgrammes, listPublicCities } from "@/lib/programmes"
+import { Search } from "lucide-react"
+import { ProgrammeCard } from "@/components/programmes/programme-card"
+import { ProgrammeListSkeleton } from "@/components/programmes/programme-list"
+import { parseQuery } from "@/lib/domain"
+import { listProgrammes } from "@/lib/programmes"
 
 export const metadata = {
   title: "Programmes",
-  description: "Church programmes taking plates from Diba Meals.",
-}
-
-type Search = {
-  status?: string
-  city?: string
-  q?: string
+  description:
+    "Find a church programme by name or code and see where Diba Meals is delivering.",
+  openGraph: {
+    title: "Programmes · Diba Meals",
+    description: "Crossover conventions, retreats and camp meetings taking meal orders.",
+  },
 }
 
 export default function ProgrammesPage({
   searchParams,
 }: {
-  searchParams: Promise<Search>
+  searchParams: Promise<{ q?: string }>
 }) {
   return (
     <div>
       <header className="bg-tomato text-cream">
         <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
-          <p className="text-sm font-semibold tracking-wide text-gold uppercase">
-            The board
-          </p>
+          <p className="text-sm font-semibold tracking-wide text-gold uppercase">The board</p>
           <h1 className="mt-2 max-w-2xl font-heading text-4xl leading-tight sm:text-5xl">
-            Who&apos;s eating this week
+            Find your programme
           </h1>
           <p className="mt-3 max-w-xl text-base leading-7 text-cream/90">
-            If your programme is here, the pot is real. The list locks at 6pm the day before — the kitchen does not do &quot;just add one more.&quot;
+            Search by church, programme name, or the code on the poster. Ordering for a meal closes 24 hours before it is delivered.
           </p>
         </div>
       </header>
       <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 sm:py-10">
-        <Suspense fallback={<ListingFallback />}>
+        <Suspense fallback={<ProgrammeListSkeleton />}>
           <ProgrammeResults searchParams={searchParams} />
         </Suspense>
       </div>
@@ -44,34 +42,62 @@ export default function ProgrammesPage({
   )
 }
 
-async function ProgrammeResults({ searchParams }: { searchParams: Promise<Search> }) {
+async function ProgrammeResults({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>
+}) {
   const params = await searchParams
-  const status = parseListStatus(params.status)
-  const city = typeof params.city === "string" ? params.city : "all"
-  const q = typeof params.q === "string" ? params.q : ""
-  const [programmes, cities] = await Promise.all([
-    listProgrammes({ status, city, q }),
-    listPublicCities(),
-  ])
+  const q = parseQuery(params.q)
+  const programmes = await listProgrammes(q)
   const noun = programmes.length === 1 ? "programme" : "programmes"
 
   return (
     <div className="space-y-6">
-      <ProgrammeFilters status={status} city={city} q={q} cities={cities} />
+      <form action="/programmes" method="get" className="flex flex-col gap-2 sm:flex-row">
+        <label className="sr-only" htmlFor="programme-search">
+          Find your programme
+        </label>
+        <div className="flex min-h-12 flex-1 items-center gap-2 rounded-lg border border-input bg-card px-3">
+          <Search className="size-4 shrink-0" aria-hidden="true" />
+          <input
+            id="programme-search"
+            name="q"
+            defaultValue={q}
+            placeholder="Church, programme name, or code"
+            className="h-12 w-full bg-transparent text-base outline-none"
+          />
+        </div>
+        <button
+          type="submit"
+          className="inline-flex h-12 items-center justify-center rounded-lg bg-ink px-5 text-sm font-semibold text-cream"
+        >
+          Search
+        </button>
+        {q ? (
+          <a href="/programmes" className="inline-flex h-12 items-center text-sm font-semibold text-tomato">
+            Clear
+          </a>
+        ) : null}
+      </form>
       <p className="text-sm text-muted-foreground">
         {programmes.length} {noun}
-        {q.trim() ? ` matching “${q.trim()}”` : ""}
+        {q ? ` matching “${q}”` : ""}
       </p>
-      <ProgrammeList programmes={programmes} />
-    </div>
-  )
-}
-
-function ListingFallback() {
-  return (
-    <div className="space-y-6">
-      <div className="h-16 rounded-xl bg-card ring-1 ring-foreground/10 motion-safe:animate-pulse" />
-      <ProgrammeListSkeleton />
+      {programmes.length === 0 ? (
+        <div className="rounded-2xl bg-card px-6 py-14 text-center ring-1 ring-foreground/10">
+          <h2 className="font-heading text-2xl">No programme matches that</h2>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
+            Try the code on the church poster, or clear the search.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-5 sm:grid-cols-2">
+          {programmes.map((programme) => (
+            <ProgrammeCard key={programme.slug} programme={programme} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

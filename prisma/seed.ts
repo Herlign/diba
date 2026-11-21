@@ -1,697 +1,643 @@
-import { PrismaClient } from "@prisma/client"
-import {
-  BatchStatus,
-  DeliveryStatus,
-  Fulfilment,
-  MealKind,
-  MenuCategory,
-  OrderStatus,
-  PaymentStatus,
-  ProgrammeStatus,
-  UserRole,
-} from "../src/lib/domain"
+import { PrismaClient, type PlanPricingMode, type StaffRole } from "@prisma/client"
+import bcrypt from "bcryptjs"
+import { addDays, format, parseISO } from "date-fns"
+import { fromZonedTime } from "date-fns-tz"
 
 const prisma = new PrismaClient()
+const TZ = "Africa/Lagos"
 
-function lagosDate(offsetDays: number, hour: number, minute = 0) {
-  const lagosNow = new Date(Date.now() + 60 * 60 * 1000)
-  return new Date(
-    Date.UTC(
-      lagosNow.getUTCFullYear(),
-      lagosNow.getUTCMonth(),
-      lagosNow.getUTCDate() + offsetDays,
-      hour - 1,
-      minute,
-      0,
-      0,
-    ),
-  )
-}
-
-function weekday(offsetDays: number) {
-  return new Intl.DateTimeFormat("en-GB", {
-    weekday: "long",
-    timeZone: "Africa/Lagos",
-  }).format(lagosDate(offsetDays, 12))
-}
-
-type SlotSpec = {
-  kind: string
-  label: string
-  hour: number
-  minute?: number
-  plates: string[]
-  extras?: string[]
-  maxPlates?: number
-}
-
-type DaySpec = {
-  offset: number
-  note: string
-  slots: SlotSpec[]
-}
-
-function offeringsFor(slot: SlotSpec) {
-  return [
-    ...slot.plates.map((slug) => ({
-      menuItem: { connect: { slug } },
-      maxPortions: slot.maxPlates ?? 180,
-    })),
-    ...(slot.extras ?? []).map((slug) => ({
-      menuItem: { connect: { slug } },
-      maxPortions: 400,
-    })),
-  ]
-}
-
-function dayCreate(day: DaySpec, sortOrder: number) {
-  return {
-    date: lagosDate(day.offset, 12),
-    label: `${weekday(day.offset)} · ${day.note}`,
-    sortOrder,
-    slots: {
-      create: day.slots.map((slot, index) => ({
-        kind: slot.kind,
-        label: slot.label,
-        serveAt: lagosDate(day.offset, slot.hour, slot.minute ?? 0),
-        orderCutoffAt: lagosDate(day.offset - 1, 18),
-        sortOrder: index,
-        offerings: { create: offeringsFor(slot) },
-      })),
-    },
-  }
-}
-
-const drinks = ["zobo", "bottled-water"]
-
-const menu = [
+const STAFF = [
   {
-    slug: "party-jollof-chicken",
-    name: "Party jollof & grilled chicken",
-    description: "Smoky party jollof, grilled chicken, and a side of coleslaw.",
-    category: MenuCategory.PLATE,
-    priceKobo: 750000,
-    spiceLevel: "MEDIUM",
+    email: "ada.admin@dibameals.test",
+    name: "Adaeze Okonkwo",
+    role: "SUPER_ADMIN" as StaffRole,
+    password: "DibaAdmin!2026",
   },
   {
-    slug: "native-jollof-fish",
-    name: "Native jollof & fried fish",
-    description: "Native jollof with fried fish, plantain, and ata dindin.",
-    category: MenuCategory.PLATE,
-    priceKobo: 850000,
-    spiceLevel: "HOT",
+    email: "kitchen@dibameals.test",
+    name: "Diba Kitchen",
+    role: "KITCHEN" as StaffRole,
+    password: "DibaKitchen!2026",
   },
   {
-    slug: "fried-rice-turkey",
-    name: "Fried rice & peppered turkey",
-    description: "Vegetable fried rice with peppered turkey and plantain.",
-    category: MenuCategory.PLATE,
-    priceKobo: 950000,
-    spiceLevel: "MEDIUM",
-  },
-  {
-    slug: "ofada-ayamase",
-    name: "Ofada rice, ayamase & egg",
-    description: "Ofada rice, green ayamase, boiled egg, and plantain.",
-    category: MenuCategory.PLATE,
-    priceKobo: 880000,
-    spiceLevel: "HOT",
-  },
-  {
-    slug: "coconut-rice-chicken",
-    name: "Coconut rice & chicken",
-    description: "Mild coconut rice with grilled chicken for a lighter plate.",
-    category: MenuCategory.PLATE,
-    priceKobo: 780000,
-    spiceLevel: "MILD",
-  },
-  {
-    slug: "white-rice-beef",
-    name: "White rice, stew & beef",
-    description: "White rice, tomato stew, and stewed beef.",
-    category: MenuCategory.PLATE,
-    priceKobo: 650000,
-    spiceLevel: "MILD",
-  },
-  {
-    slug: "pounded-yam-egusi",
-    name: "Pounded yam & egusi",
-    description: "Pounded yam with egusi and assorted meat.",
-    category: MenuCategory.PLATE,
-    priceKobo: 850000,
-    spiceLevel: "MEDIUM",
-  },
-  {
-    slug: "semo-ogbono",
-    name: "Semovita & ogbono",
-    description: "Semovita with ogbono and goat meat.",
-    category: MenuCategory.PLATE,
-    priceKobo: 820000,
-    spiceLevel: "HOT",
-  },
-  {
-    slug: "eba-seafood-okro",
-    name: "Eba & seafood okro",
-    description: "Eba with seafood okro and a little stockfish.",
-    category: MenuCategory.PLATE,
-    priceKobo: 780000,
-    spiceLevel: "MEDIUM",
-  },
-  {
-    slug: "plantain-porridge",
-    name: "Plantain porridge & fish",
-    description: "Ripe plantain porridge with fried fish.",
-    category: MenuCategory.PLATE,
-    priceKobo: 680000,
-    spiceLevel: "MILD",
-  },
-  {
-    slug: "moi-moi",
-    name: "Moi moi",
-    description: "Steamed bean pudding, wrapped for the hall.",
-    category: MenuCategory.SIDE,
-    priceKobo: 150000,
-    spiceLevel: "MILD",
-    isVegetarian: true,
-  },
-  {
-    slug: "fried-plantain",
-    name: "Fried plantain",
-    description: "Sweet fried plantain, packed beside the plate.",
-    category: MenuCategory.SIDE,
-    priceKobo: 120000,
-    spiceLevel: "MILD",
-    isVegetarian: true,
-  },
-  {
-    slug: "zobo",
-    name: "Zobo",
-    description: "Chilled hibiscus, ginger, and pineapple.",
-    category: MenuCategory.DRINK,
-    priceKobo: 100000,
-    spiceLevel: "MILD",
-    isVegetarian: true,
-  },
-  {
-    slug: "chapman",
-    name: "Chapman",
-    description: "Fanta, blackcurrant, and a slice of cucumber.",
-    category: MenuCategory.DRINK,
-    priceKobo: 150000,
-    spiceLevel: "MILD",
-    isVegetarian: true,
-  },
-  {
-    slug: "bottled-water",
-    name: "Bottled water",
-    description: "75cl still water.",
-    category: MenuCategory.DRINK,
-    priceKobo: 50000,
-    spiceLevel: "MILD",
-    isVegetarian: true,
+    email: "dispatch@dibameals.test",
+    name: "Seyi Adebayo",
+    role: "DISPATCH" as StaffRole,
+    password: "DibaDispatch!2026",
   },
 ]
 
-async function main() {
-  await prisma.kitchenBatch.deleteMany()
-  await prisma.delivery.deleteMany()
-  await prisma.payment.deleteMany()
-  await prisma.orderLine.deleteMany({ where: { parentLineId: { not: null } } })
-  await prisma.order.deleteMany()
-  await prisma.slotOffering.deleteMany()
-  await prisma.mealSlot.deleteMany()
-  await prisma.programmeDay.deleteMany()
-  await prisma.dropPoint.deleteMany()
-  await prisma.programme.deleteMany()
-  await prisma.menuItem.deleteMany()
-  await prisma.user.deleteMany()
+type VariantSeed = {
+  name: string
+  priceKobo: number
+  serves?: number
+  prep?: number
+}
 
-  await prisma.user.createMany({
-    data: [
+type ItemSeed = {
+  slug: string
+  name: string
+  description: string
+  imageUrl: string
+  category: string
+  tags: string[]
+  variants: VariantSeed[]
+}
+
+const categories = [
+  { slug: "breakfast", name: "Breakfast", position: 0 },
+  { slug: "rice-dishes", name: "Rice Dishes", position: 1 },
+  { slug: "swallow", name: "Swallow", position: 2 },
+  { slug: "snacks", name: "Snacks", position: 3 },
+  { slug: "sides", name: "Sides", position: 4 },
+  { slug: "drinks", name: "Drinks", position: 5 },
+]
+
+function family(priceKobo: number) {
+  return Math.round((priceKobo * 3.2) / 10000) * 10000
+}
+
+const items: ItemSeed[] = [
+  {
+    slug: "akara-pap",
+    name: "Akara & Pap",
+    description: "Crisp bean cakes with warm pap, packed for an early session.",
+    imageUrl: "/images/plantain.jpg",
+    category: "breakfast",
+    tags: ["vegetarian"],
+    variants: [{ name: "Regular", priceKobo: 350000, prep: 25 }],
+  },
+  {
+    slug: "yam-egg",
+    name: "Yam & Egg Sauce",
+    description: "Boiled yam with peppered egg sauce.",
+    imageUrl: "/images/yam-egg.jpg",
+    category: "breakfast",
+    tags: [],
+    variants: [{ name: "Regular", priceKobo: 500000, prep: 30 }],
+  },
+  {
+    slug: "bread-omelette",
+    name: "Bread & Omelette + Tea",
+    description: "Buttered bread, a folded omelette, and a flask of tea.",
+    imageUrl: "/images/yam-egg.jpg",
+    category: "breakfast",
+    tags: [],
+    variants: [{ name: "Regular", priceKobo: 400000, prep: 20 }],
+  },
+  {
+    slug: "jollof-chicken",
+    name: "Jollof Rice + Chicken",
+    description: "Smoky party jollof with grilled chicken.",
+    imageUrl: "/images/jollof.jpg",
+    category: "rice-dishes",
+    tags: [],
+    variants: [
+      { name: "Regular", priceKobo: 650000, prep: 45 },
+      { name: "Large", priceKobo: 900000, serves: 1, prep: 45 },
+      { name: "Family pack – 4 people", priceKobo: family(650000), serves: 4, prep: 60 },
+    ],
+  },
+  {
+    slug: "fried-rice-turkey",
+    name: "Fried Rice + Turkey",
+    description: "Vegetable fried rice with peppered turkey.",
+    imageUrl: "/images/jollof-platter.jpg",
+    category: "rice-dishes",
+    tags: [],
+    variants: [
+      { name: "Regular", priceKobo: 950000, prep: 45 },
+      { name: "Large", priceKobo: 1200000, prep: 45 },
+      { name: "Family pack – 4 people", priceKobo: family(950000), serves: 4, prep: 60 },
+    ],
+  },
+  {
+    slug: "ofada-ayamase",
+    name: "Ofada Rice + Ayamase",
+    description: "Ofada rice, green ayamase, and a boiled egg.",
+    imageUrl: "/images/jollof.jpg",
+    category: "rice-dishes",
+    tags: ["spicy"],
+    variants: [
+      { name: "Regular", priceKobo: 850000, prep: 50 },
+      { name: "Family pack – 4 people", priceKobo: family(850000), serves: 4, prep: 70 },
+    ],
+  },
+  {
+    slug: "coconut-rice",
+    name: "Coconut Rice + Chicken",
+    description: "Mild coconut rice with grilled chicken.",
+    imageUrl: "/images/jollof-platter.jpg",
+    category: "rice-dishes",
+    tags: [],
+    variants: [{ name: "Regular", priceKobo: 780000, prep: 45 }],
+  },
+  {
+    slug: "white-rice-beef",
+    name: "White Rice + Beef Stew",
+    description: "White rice with tomato stew and stewed beef.",
+    imageUrl: "/images/jollof.jpg",
+    category: "rice-dishes",
+    tags: [],
+    variants: [{ name: "Regular", priceKobo: 650000, prep: 40 }],
+  },
+  {
+    slug: "spaghetti",
+    name: "Spaghetti Stir-fry",
+    description: "Stir-fried spaghetti with peppered chicken.",
+    imageUrl: "/images/jollof-platter.jpg",
+    category: "rice-dishes",
+    tags: [],
+    variants: [
+      { name: "Regular", priceKobo: 600000, prep: 35 },
+      { name: "Family pack – 4 people", priceKobo: family(600000), serves: 4, prep: 50 },
+    ],
+  },
+  {
+    slug: "amala-ewedu",
+    name: "Amala + Ewedu + Beef",
+    description: "Soft amala, ewedu, and beef stew.",
+    imageUrl: "/images/egusi.jpg",
+    category: "swallow",
+    tags: [],
+    variants: [
+      { name: "Regular", priceKobo: 700000, prep: 40 },
+      { name: "Family pack – 4 people", priceKobo: family(700000), serves: 4, prep: 55 },
+    ],
+  },
+  {
+    slug: "pounded-yam-egusi",
+    name: "Pounded Yam + Egusi + Goat Meat",
+    description: "Pounded yam with egusi and goat meat.",
+    imageUrl: "/images/egusi.jpg",
+    category: "swallow",
+    tags: ["spicy"],
+    variants: [
+      { name: "Regular", priceKobo: 900000, prep: 50 },
+      { name: "Family pack – 4 people", priceKobo: family(900000), serves: 4, prep: 70 },
+    ],
+  },
+  {
+    slug: "eba-okro",
+    name: "Eba + Seafood Okro",
+    description: "Eba with seafood okro.",
+    imageUrl: "/images/egusi.jpg",
+    category: "swallow",
+    tags: ["spicy"],
+    variants: [{ name: "Regular", priceKobo: 750000, prep: 40 }],
+  },
+  {
+    slug: "semo-ogbono",
+    name: "Semovita + Ogbono",
+    description: "Semovita with ogbono and assorted meat.",
+    imageUrl: "/images/egusi.jpg",
+    category: "swallow",
+    tags: ["spicy"],
+    variants: [{ name: "Regular", priceKobo: 820000, prep: 40 }],
+  },
+  {
+    slug: "peppered-fish",
+    name: "Peppered Fish",
+    description: "Fried fish in a light pepper sauce. A lean plate.",
+    imageUrl: "/images/grilled-fish.jpg",
+    category: "rice-dishes",
+    tags: ["spicy"],
+    variants: [{ name: "Regular", priceKobo: 850000, prep: 35 }],
+  },
+  {
+    slug: "grilled-chicken",
+    name: "Grilled Chicken Plate",
+    description: "Charred chicken with a small side of salad.",
+    imageUrl: "/images/grilled-chicken.jpg",
+    category: "snacks",
+    tags: [],
+    variants: [{ name: "Regular", priceKobo: 750000, prep: 35 }],
+  },
+  {
+    slug: "meat-pie",
+    name: "Meat Pie",
+    description: "A warm meat pie for the break between sessions.",
+    imageUrl: "/images/plantain.jpg",
+    category: "snacks",
+    tags: [],
+    variants: [{ name: "Regular", priceKobo: 150000, prep: 15 }],
+  },
+  {
+    slug: "moi-moi",
+    name: "Moi Moi",
+    description: "Steamed bean pudding, wrapped for the hall.",
+    imageUrl: "/images/plantain.jpg",
+    category: "sides",
+    tags: ["vegetarian"],
+    variants: [{ name: "Regular", priceKobo: 150000, prep: 20 }],
+  },
+  {
+    slug: "fried-plantain",
+    name: "Fried Plantain",
+    description: "Sweet fried plantain.",
+    imageUrl: "/images/plantain.jpg",
+    category: "sides",
+    tags: ["vegetarian"],
+    variants: [{ name: "Regular", priceKobo: 120000, prep: 15 }],
+  },
+  {
+    slug: "zobo",
+    name: "Fruity Zobo 50cl",
+    description: "Chilled hibiscus with ginger and pineapple.",
+    imageUrl: "/images/jollof-platter.jpg",
+    category: "drinks",
+    tags: ["vegetarian"],
+    variants: [{ name: "50cl", priceKobo: 190000, prep: 5 }],
+  },
+  {
+    slug: "chapman",
+    name: "Chapman 50cl",
+    description: "Chapman with a slice of cucumber.",
+    imageUrl: "/images/jollof-platter.jpg",
+    category: "drinks",
+    tags: ["vegetarian"],
+    variants: [{ name: "50cl", priceKobo: 250000, prep: 5 }],
+  },
+  {
+    slug: "bottled-water",
+    name: "Bottled Water",
+    description: "75cl still water.",
+    imageUrl: "/images/jollof-platter.jpg",
+    category: "drinks",
+    tags: [],
+    variants: [{ name: "75cl", priceKobo: 50000, prep: 1 }],
+  },
+]
+
+const morningSlugs = [
+  "akara-pap",
+  "yam-egg",
+  "bread-omelette",
+  "moi-moi",
+  "fried-plantain",
+  "zobo",
+  "chapman",
+  "bottled-water",
+  "meat-pie",
+]
+
+const eveningSlugs = [
+  "jollof-chicken",
+  "fried-rice-turkey",
+  "ofada-ayamase",
+  "coconut-rice",
+  "white-rice-beef",
+  "spaghetti",
+  "amala-ewedu",
+  "pounded-yam-egusi",
+  "eba-okro",
+  "semo-ogbono",
+  "peppered-fish",
+  "grilled-chicken",
+  "moi-moi",
+  "fried-plantain",
+  "zobo",
+  "chapman",
+  "bottled-water",
+]
+
+function eachDay(start: string, end: string) {
+  const days: string[] = []
+  let cursor = parseISO(start)
+  const last = parseISO(end)
+  while (cursor.getTime() <= last.getTime()) {
+    days.push(format(cursor, "yyyy-MM-dd"))
+    cursor = addDays(cursor, 1)
+  }
+  return days
+}
+
+function utcDate(iso: string) {
+  const [year, month, day] = iso.split("-").map(Number)
+  return new Date(Date.UTC(year!, month! - 1, day))
+}
+
+function cutoffAt(isoDate: string, windowStart: string, hours: number) {
+  const start = fromZonedTime(`${isoDate}T${windowStart}:00`, TZ)
+  return new Date(start.getTime() - hours * 60 * 60 * 1000)
+}
+
+async function reset() {
+  await prisma.$executeRawUnsafe(`
+    TRUNCATE TABLE
+      "Payment",
+      "OrderItem",
+      "OrderSlot",
+      "Order",
+      "Attendee",
+      "MealPlanPeriod",
+      "MealPlan",
+      "ProgrammeMenuItemPeriod",
+      "ProgrammeMenuItem",
+      "MealSlot",
+      "MealPeriod",
+      "PromoCode",
+      "Programme",
+      "DeliveryPoint",
+      "Venue",
+      "MenuItemVariant",
+      "MenuItem",
+      "Category",
+      "StaffUser",
+      "Church"
+    RESTART IDENTITY CASCADE
+  `)
+}
+
+async function main() {
+  await reset()
+
+  for (const member of STAFF) {
+    await prisma.staffUser.create({
+      data: {
+        email: member.email,
+        name: member.name,
+        role: member.role,
+        passwordHash: bcrypt.hashSync(member.password, 10),
+      },
+    })
+  }
+
+  for (const category of categories) {
+    await prisma.category.create({ data: category })
+  }
+
+  for (const [index, item] of items.entries()) {
+    const category = await prisma.category.findUniqueOrThrow({ where: { slug: item.category } })
+    await prisma.menuItem.create({
+      data: {
+        slug: item.slug,
+        name: item.name,
+        description: item.description,
+        imageUrl: item.imageUrl,
+        dietaryTags: item.tags,
+        position: index,
+        categoryId: category.id,
+        variants: {
+          create: item.variants.map((variant, position) => ({
+            name: variant.name,
+            priceKobo: variant.priceKobo,
+            servesCount: variant.serves ?? 1,
+            prepMinutes: variant.prep ?? 30,
+            position,
+          })),
+        },
+      },
+    })
+  }
+
+  const church = await prisma.church.create({
+    data: {
+      name: "Grace Assembly Lagos",
+      slug: "grace-assembly-lagos",
+      contactPhone: "+2348090002210",
+      contactEmail: "programmes@graceassembly.test",
+    },
+  })
+
+  const venue = await prisma.venue.create({
+    data: {
+      name: "Grace Camp Ground, Lekki-Epe Expressway",
+      address: "Grace Camp Ground, Lekki-Epe Expressway, Lagos",
+      lat: 6.4583,
+      lng: 3.6015,
+      notes: "Enter via Gate 2",
+      deliveryPoints: {
+        create: [
+          { name: "Main Auditorium – Gate A", description: "Left of the pulpit, under the balcony.", position: 0 },
+          { name: "Hostel Block C", description: "Ask the camp secretariat at the lodge.", position: 1 },
+          { name: "Children's Church Hall", description: "Annex behind the main bowl.", position: 2 },
+        ],
+      },
+    },
+  })
+
+  await createProgramme({
+    churchId: church.id,
+    venueId: venue.id,
+    title: "Crossover Convention 2026",
+    slug: "crossover-convention-2026",
+    code: "CROSS26",
+    description:
+      "Five days at Grace Camp Ground. Morning packs land before the first session. Evening packs are at your block when the benediction drops.",
+    coverImageUrl: "/images/jollof.jpg",
+    startDate: "2026-12-27",
+    endDate: "2026-12-31",
+    status: "PUBLISHED",
+    orderCutoffHours: 24,
+    maxOrdersPerSlot: 300,
+    periods: [
+      { name: "Morning", start: "07:00", end: "09:00", position: 0, slugs: morningSlugs },
+      { name: "Evening", start: "18:00", end: "20:00", position: 1, slugs: eveningSlugs },
+    ],
+    plans: [
       {
-        email: "ada.okonkwo@dibameals.test",
-        name: "Adaeze Okonkwo",
-        phone: "+234 809 000 1101",
-        role: UserRole.ADMIN,
+        name: "Full Programme – Morning + Evening",
+        description: "Every morning and every evening, Sunday through Thursday. You still pick the plates.",
+        coversAllDays: true,
+        pricingMode: "PERCENT_DISCOUNT",
+        discountPercent: 10,
+        periods: ["Morning", "Evening"],
+        isPopular: true,
+        position: 0,
       },
       {
-        email: "kitchen@dibameals.test",
-        name: "Diba Kitchen",
-        phone: "+234 809 000 1102",
-        role: UserRole.KITCHEN,
+        name: "Evenings Only",
+        description: "Skip breakfast. Evening plates for all five nights.",
+        coversAllDays: true,
+        pricingMode: "PERCENT_DISCOUNT",
+        discountPercent: 5,
+        periods: ["Evening"],
+        isPopular: false,
+        position: 1,
       },
       {
-        email: "seyi.adebayo@dibameals.test",
-        name: "Seyi Adebayo",
-        phone: "+234 809 000 1103",
-        role: UserRole.RIDER,
-      },
-      {
-        email: "tunde.balogun@hillside.test",
-        name: "Tunde Balogun",
-        phone: "+234 809 000 1104",
-        role: UserRole.COORDINATOR,
-      },
-      {
-        email: "amaka.nwosu@guest.test",
-        name: "Amaka Nwosu",
-        phone: "+234 809 000 1105",
-        role: UserRole.ATTENDEE,
+        name: "Weekend Only",
+        description: "Opening Sunday, 27 Dec, morning and evening. You pick that day rather than the whole week.",
+        coversAllDays: false,
+        pricingMode: "PERCENT_DISCOUNT",
+        discountPercent: 8,
+        periods: ["Morning", "Evening"],
+        isPopular: false,
+        position: 2,
       },
     ],
   })
 
-  await prisma.menuItem.createMany({ data: menu })
+  await createProgramme({
+    churchId: church.id,
+    venueId: venue.id,
+    title: "Year-End Retreat",
+    slug: "year-end-retreat",
+    code: "RETREAT26",
+    description: "Three quiet mornings at the camp. Breakfast only, before the teaching starts.",
+    coverImageUrl: "/images/plantain.jpg",
+    startDate: "2026-12-18",
+    endDate: "2026-12-20",
+    status: "PUBLISHED",
+    orderCutoffHours: 24,
+    maxOrdersPerSlot: 300,
+    periods: [{ name: "Morning", start: "07:00", end: "09:00", position: 0, slugs: morningSlugs }],
+    plans: [],
+  })
 
-  const conventionPlates = [
-    "party-jollof-chicken",
-    "fried-rice-turkey",
-    "ofada-ayamase",
-    "pounded-yam-egusi",
-  ]
-  const campPlates = [
-    "party-jollof-chicken",
-    "fried-rice-turkey",
-    "plantain-porridge",
-    "white-rice-beef",
-  ]
-  const lightPlates = ["party-jollof-chicken", "coconut-rice-chicken", "white-rice-beef"]
+  await createProgramme({
+    churchId: church.id,
+    venueId: venue.id,
+    title: "Ministers' Preview",
+    slug: "ministers-preview",
+    code: "DRAFT26",
+    description: "Still a draft. Hidden from the public list.",
+    coverImageUrl: "/images/egusi.jpg",
+    startDate: "2027-01-08",
+    endDate: "2027-01-09",
+    status: "DRAFT",
+    orderCutoffHours: 24,
+    maxOrdersPerSlot: 40,
+    periods: [{ name: "Morning", start: "07:00", end: "09:00", position: 0, slugs: ["bread-omelette", "bottled-water"] }],
+    plans: [],
+  })
 
-  await prisma.programme.create({
+  const crossover = await prisma.programme.findUniqueOrThrow({ where: { code: "CROSS26" } })
+  await prisma.promoCode.create({
     data: {
-      slug: "hillside-youth-camp",
-      title: "Youth Camp Meeting",
-      ministryName: "Hillside Chapel",
-      summary: "Three days on the Bodija ridge. Lunch after bible study, dinner before the night session.",
-      description:
-        "Hillside Chapel hosts its youth camp in Bodija. Diba Meals packs lunch and dinner for the main auditorium and the workers' lodge. Order by 6pm the day before each meal.",
-      city: "Ibadan",
-      state: "Oyo",
-      venueName: "Hillside Chapel auditorium",
-      venueAddress: "12 Awolowo Avenue, Bodija, Ibadan",
-      landmark: "Opposite the old cocoa house junction",
-      startsOn: lagosDate(6, 6),
-      endsOn: lagosDate(8, 21),
-      status: ProgrammeStatus.ORDERING_OPEN,
-      accent: "palm",
-      contactName: "Tunde Balogun",
-      contactPhone: "+234 809 000 1104",
-      coordinator: { connect: { email: "tunde.balogun@hillside.test" } },
-      dropPoints: {
-        create: [
-          { name: "Auditorium, Block A", instructions: "Left of the pulpit, under the balcony.", sortOrder: 0 },
-          { name: "Auditorium, Block B", instructions: "Right aisle, beside the sound booth.", sortOrder: 1 },
-          { name: "Workers' lodge", instructions: "Ask for the camp secretariat.", sortOrder: 2 },
-        ],
-      },
-      days: {
-        create: [
-          dayCreate({
-            offset: 6,
-            note: "Arrival",
-            slots: [
-              { kind: MealKind.LUNCH, label: "Lunch", hour: 13, plates: campPlates, extras: drinks },
-              { kind: MealKind.DINNER, label: "Dinner", hour: 18, minute: 30, plates: campPlates, extras: drinks },
-            ],
-          }, 0),
-          dayCreate({
-            offset: 7,
-            note: "Sessions",
-            slots: [
-              { kind: MealKind.BREAKFAST, label: "Breakfast", hour: 8, plates: ["plantain-porridge", "white-rice-beef"], extras: drinks, maxPlates: 120 },
-              { kind: MealKind.LUNCH, label: "Lunch", hour: 13, plates: campPlates, extras: drinks },
-              { kind: MealKind.DINNER, label: "Dinner", hour: 18, minute: 30, plates: campPlates, extras: drinks },
-            ],
-          }, 1),
-          dayCreate({
-            offset: 8,
-            note: "Sending forth",
-            slots: [
-              { kind: MealKind.LUNCH, label: "Lunch", hour: 13, plates: campPlates, extras: drinks },
-            ],
-          }, 2),
-        ],
-      },
+      code: "CROSS10",
+      discountType: "PERCENT",
+      percentOff: 10,
+      programmeId: crossover.id,
+      usageLimit: 100,
+      expiresAt: fromZonedTime("2026-12-26T23:59:00", TZ),
     },
   })
 
-  await prisma.programme.create({
+  console.log("Seeded Grace Assembly, CROSS26, RETREAT26, and staff accounts.")
+  for (const member of STAFF) {
+    console.log(`${member.role} ${member.email} / ${member.password}`)
+  }
+}
+
+async function createProgramme(input: {
+  churchId: string
+  venueId: string
+  title: string
+  slug: string
+  code: string
+  description: string
+  coverImageUrl: string
+  startDate: string
+  endDate: string
+  status: "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED"
+  orderCutoffHours: number
+  maxOrdersPerSlot: number
+  periods: { name: string; start: string; end: string; position: number; slugs: string[] }[]
+  plans: {
+    name: string
+    description: string
+    coversAllDays: boolean
+    pricingMode: PlanPricingMode
+    discountPercent: number
+    periods: string[]
+    isPopular: boolean
+    position: number
+  }[]
+}) {
+  const programme = await prisma.programme.create({
     data: {
-      slug: "city-of-light-convention",
-      title: "Greater Light Convention",
-      ministryName: "City of Light Assembly",
-      summary: "Friday arrival dinner, a full Saturday, and Sunday lunch before the closing prayer.",
-      description:
-        "City of Light Assembly's annual convention at The Arc, Ikeja. Plates are labelled by block and dropped at the auditorium doors when the session ends.",
-      city: "Lagos",
-      state: "Lagos",
-      venueName: "The Arc",
-      venueAddress: "18 Oregun Road, Ikeja, Lagos",
-      landmark: "Five minutes from Ikeja City Mall",
-      startsOn: lagosDate(13, 6),
-      endsOn: lagosDate(15, 21),
-      status: ProgrammeStatus.ORDERING_OPEN,
-      accent: "clay",
-      contactName: "Funke Adeyemi",
-      contactPhone: "+234 809 000 1201",
-      dropPoints: {
-        create: [
-          { name: "Auditorium, Block A", instructions: "Ground floor, left of the stage.", sortOrder: 0 },
-          { name: "Auditorium, Block B", instructions: "Ground floor, right of the stage.", sortOrder: 1 },
-          { name: "Children's hall", instructions: "Annex behind the main bowl.", sortOrder: 2 },
-          { name: "Ministers' lodge", instructions: "Call the protocol desk on arrival.", sortOrder: 3 },
-        ],
-      },
-      days: {
-        create: [
-          dayCreate({
-            offset: 13,
-            note: "Arrival",
-            slots: [
-              {
-                kind: MealKind.DINNER,
-                label: "Arrival dinner",
-                hour: 18,
-                minute: 30,
-                plates: conventionPlates,
-                extras: [...drinks, "chapman", "moi-moi"],
-              },
-            ],
-          }, 0),
-          dayCreate({
-            offset: 14,
-            note: "Convention day",
-            slots: [
-              {
-                kind: MealKind.LUNCH,
-                label: "Lunch",
-                hour: 13,
-                plates: [...conventionPlates, "eba-seafood-okro"],
-                extras: [...drinks, "chapman", "fried-plantain"],
-                maxPlates: 400,
-              },
-              {
-                kind: MealKind.DINNER,
-                label: "Dinner",
-                hour: 18,
-                minute: 30,
-                plates: conventionPlates,
-                extras: drinks,
-                maxPlates: 400,
-              },
-            ],
-          }, 1),
-          dayCreate({
-            offset: 15,
-            note: "Thanksgiving",
-            slots: [
-              {
-                kind: MealKind.LUNCH,
-                label: "Closing lunch",
-                hour: 13,
-                plates: conventionPlates,
-                extras: drinks,
-                maxPlates: 400,
-              },
-            ],
-          }, 2),
-        ],
+      churchId: input.churchId,
+      venueId: input.venueId,
+      title: input.title,
+      slug: input.slug,
+      code: input.code,
+      description: input.description,
+      coverImageUrl: input.coverImageUrl,
+      startDate: utcDate(input.startDate),
+      endDate: utcDate(input.endDate),
+      status: input.status,
+      orderCutoffHours: input.orderCutoffHours,
+      maxOrdersPerSlot: input.maxOrdersPerSlot,
+      mealPeriods: {
+        create: input.periods.map((period) => ({
+          name: period.name,
+          deliveryWindowStart: period.start,
+          deliveryWindowEnd: period.end,
+          position: period.position,
+        })),
       },
     },
+    include: { mealPeriods: true },
   })
 
-  await prisma.programme.create({
-    data: {
-      slug: "harbour-watchnight",
-      title: "Harbour Watchnight",
-      ministryName: "Harbour Fellowship",
-      summary: "Crossover on the waterfront. The menu is up; ordering opens closer to the night.",
-      description:
-        "Harbour Fellowship keeps a crossover service beside the marina. Dinner on the 31st and breakfast after midnight prayer. Ordering is announced, not open yet.",
-      city: "Port Harcourt",
-      state: "Rivers",
-      venueName: "Harbour Fellowship hall",
-      venueAddress: "4 Forces Avenue, Old GRA, Port Harcourt",
-      landmark: "Near the old GRA roundabout",
-      startsOn: lagosDate(40, 18),
-      endsOn: lagosDate(41, 10),
-      status: ProgrammeStatus.PUBLISHED,
-      accent: "gold",
-      contactName: "Ibinabo Hart",
-      contactPhone: "+234 809 000 1301",
-      dropPoints: {
-        create: [
-          { name: "Main hall, front", instructions: "Collect from the ushers after the benediction.", sortOrder: 0 },
-          { name: "Overflow tent", instructions: "Side lawn, white canopy.", sortOrder: 1 },
-        ],
-      },
-      days: {
-        create: [
-          dayCreate({
-            offset: 40,
-            note: "Crossover",
-            slots: [
-              { kind: MealKind.DINNER, label: "Crossover dinner", hour: 19, plates: lightPlates, extras: drinks },
-            ],
-          }, 0),
-          dayCreate({
-            offset: 41,
-            note: "New morning",
-            slots: [
-              { kind: MealKind.BREAKFAST, label: "Breakfast", hour: 7, minute: 30, plates: ["plantain-porridge", "white-rice-beef"], extras: drinks },
-            ],
-          }, 1),
-        ],
-      },
-    },
-  })
+  const periodByName = new Map(programme.mealPeriods.map((period) => [period.name, period]))
+  const days = eachDay(input.startDate, input.endDate)
 
-  await prisma.programme.create({
-    data: {
-      slug: "kings-table-carol",
-      title: "Carol Service Supper",
-      ministryName: "King's Table Parish",
-      summary: "One seated supper after the carols. The kitchen has closed the list.",
-      description:
-        "King's Table Parish asked for a single supper after the carol service. Ordering is closed so the kitchen can lock portions.",
-      city: "Calabar",
-      state: "Cross River",
-      venueName: "King's Table Parish",
-      venueAddress: "Marian Road, Calabar",
-      landmark: "Beside the Marian market gate",
-      startsOn: lagosDate(29, 16),
-      endsOn: lagosDate(29, 21),
-      status: ProgrammeStatus.ORDERING_CLOSED,
-      accent: "ink",
-      contactName: "Eme Bassey",
-      contactPhone: "+234 809 000 1401",
-      dropPoints: {
-        create: [
-          { name: "Parish hall", instructions: "Tables are numbered. Check your pack label.", sortOrder: 0 },
-        ],
-      },
-      days: {
-        create: [
-          dayCreate({
-            offset: 29,
-            note: "Carol supper",
-            slots: [
-              { kind: MealKind.DINNER, label: "Supper", hour: 18, plates: ["fried-rice-turkey", "party-jollof-chicken", "coconut-rice-chicken"], extras: ["chapman", "bottled-water"], maxPlates: 220 },
-            ],
-          }, 0),
-        ],
-      },
-    },
-  })
-
-  const women = await prisma.programme.create({
-    data: {
-      slug: "grace-women-of-faith",
-      title: "Women of Faith Conference",
-      ministryName: "Grace Tabernacle",
-      summary: "Last weekend in Gwarinpa. Plates were packed for the fellowship hall.",
-      description:
-        "Grace Tabernacle's women conference has been held. This record stays on the list so coordinators can see a completed programme.",
-      city: "Abuja",
-      state: "FCT",
-      venueName: "Grace Tabernacle",
-      venueAddress: "3rd Avenue, Gwarinpa, Abuja",
-      landmark: "After the Gwarinpa estate gate",
-      startsOn: lagosDate(-14, 8),
-      endsOn: lagosDate(-13, 17),
-      status: ProgrammeStatus.COMPLETED,
-      accent: "palm",
-      contactName: "Blessing Danjuma",
-      contactPhone: "+234 809 000 1501",
-      dropPoints: {
-        create: [
-          { name: "Fellowship hall", instructions: "Side entrance, not the sanctuary.", sortOrder: 0 },
-        ],
-      },
-      days: {
-        create: [
-          dayCreate({
-            offset: -14,
-            note: "Opening",
-            slots: [
-              { kind: MealKind.LUNCH, label: "Lunch", hour: 13, plates: lightPlates, extras: drinks, maxPlates: 150 },
-            ],
-          }, 0),
-          dayCreate({
-            offset: -13,
-            note: "Closing",
-            slots: [
-              { kind: MealKind.LUNCH, label: "Lunch", hour: 13, plates: lightPlates, extras: drinks, maxPlates: 150 },
-            ],
-          }, 1),
-        ],
-      },
-    },
-  })
-
-  await prisma.programme.create({
-    data: {
-      slug: "enugu-ministers-institute",
-      title: "Ministers' Institute",
-      ministryName: "Kingdom College",
-      summary: "Still a draft. Hidden from the public list until the college confirms dates.",
-      description: "A working draft for a January institute in Enugu. Not published.",
-      city: "Enugu",
-      state: "Enugu",
-      venueName: "Kingdom College chapel",
-      venueAddress: "Independence Layout, Enugu",
-      startsOn: lagosDate(55, 8),
-      endsOn: lagosDate(57, 16),
-      status: ProgrammeStatus.DRAFT,
-      accent: "ink",
-      contactName: "Adaeze Okonkwo",
-      contactPhone: "+234 809 000 1101",
-      dropPoints: {
-        create: [{ name: "Chapel foyer", sortOrder: 0 }],
-      },
-      days: {
-        create: [
-          dayCreate({
-            offset: 55,
-            note: "Opening",
-            slots: [
-              { kind: MealKind.LUNCH, label: "Lunch", hour: 13, plates: ["white-rice-beef"], extras: ["bottled-water"], maxPlates: 80 },
-            ],
-          }, 0),
-        ],
-      },
-    },
-  })
-
-  const offering = await prisma.slotOffering.findFirst({
-    where: {
-      menuItem: { slug: "party-jollof-chicken" },
-      mealSlot: { programmeDay: { programmeId: women.id, sortOrder: 0 } },
-    },
-    include: { mealSlot: true, menuItem: true },
-  })
-  const dropPoint = await prisma.dropPoint.findFirst({
-    where: { programmeId: women.id, name: "Fellowship hall" },
-  })
-  const attendee = await prisma.user.findUniqueOrThrow({
-    where: { email: "amaka.nwosu@guest.test" },
-  })
-  const rider = await prisma.user.findUniqueOrThrow({
-    where: { email: "seyi.adebayo@dibameals.test" },
-  })
-
-  if (!offering || !dropPoint) {
-    throw new Error("Seed could not find the sample offering")
+  for (const day of days) {
+    for (const period of programme.mealPeriods) {
+      await prisma.mealSlot.create({
+        data: {
+          programmeId: programme.id,
+          mealPeriodId: period.id,
+          date: utcDate(day),
+          capacity: input.maxOrdersPerSlot,
+          isOpen: true,
+          cutoffAt: cutoffAt(day, period.deliveryWindowStart, input.orderCutoffHours),
+        },
+      })
+    }
   }
 
-  const unit = offering.menuItem.priceKobo
-  const drink = await prisma.menuItem.findUniqueOrThrow({ where: { slug: "zobo" } })
-  const total = unit + drink.priceKobo
-
-  const order = await prisma.order.create({
-    data: {
-      reference: "DIBA-WOF-1042",
-      userId: attendee.id,
-      programmeId: women.id,
-      status: OrderStatus.DELIVERED,
-      fulfilment: Fulfilment.SECTION_DROP,
-      dropPointId: dropPoint.id,
-      contactName: attendee.name,
-      contactPhone: attendee.phone ?? "",
-      guestEmail: attendee.email,
-      subtotalKobo: total,
-      totalKobo: total,
-      placedAt: lagosDate(-16, 11),
-      paidAt: lagosDate(-16, 11),
-      lines: {
-        create: [
-          {
-            slotOfferingId: offering.id,
-            itemName: offering.menuItem.name,
-            slotLabel: "Opening · Lunch",
-            serveAt: offering.mealSlot.serveAt,
-            quantity: 1,
-            unitPriceKobo: unit,
-            lineTotalKobo: unit,
+  for (const periodSpec of input.periods) {
+    const period = periodByName.get(periodSpec.name)
+    if (!period) continue
+    for (const slug of periodSpec.slugs) {
+      const item = await prisma.menuItem.findUniqueOrThrow({
+        where: { slug },
+        include: { variants: true },
+      })
+      for (const variant of item.variants) {
+        const offering = await prisma.programmeMenuItem.upsert({
+          where: { programmeId_variantId: { programmeId: programme.id, variantId: variant.id } },
+          update: {},
+          create: { programmeId: programme.id, variantId: variant.id },
+        })
+        await prisma.programmeMenuItemPeriod.upsert({
+          where: {
+            programmeMenuItemId_mealPeriodId: {
+              programmeMenuItemId: offering.id,
+              mealPeriodId: period.id,
+            },
           },
-        ],
-      },
-      payment: {
-        create: {
-          provider: "PAYSTACK",
-          status: PaymentStatus.SUCCESS,
-          amountKobo: total,
-          reference: "PSK_TEST_WOF_1042",
-          channel: "card",
-          paidAt: lagosDate(-16, 11),
-          rawPayload: JSON.stringify({ event: "charge.success", reference: "PSK_TEST_WOF_1042" }),
+          update: {},
+          create: { programmeMenuItemId: offering.id, mealPeriodId: period.id },
+        })
+      }
+    }
+  }
+
+  for (const plan of input.plans) {
+    await prisma.mealPlan.create({
+      data: {
+        programmeId: programme.id,
+        name: plan.name,
+        description: plan.description,
+        coversAllDays: plan.coversAllDays,
+        pricingMode: plan.pricingMode,
+        discountPercent: plan.discountPercent,
+        attendeeChoosesItems: true,
+        isPopular: plan.isPopular,
+        position: plan.position,
+        periods: {
+          create: plan.periods.map((name) => ({
+            mealPeriodId: periodByName.get(name)!.id,
+          })),
         },
       },
-      delivery: {
-        create: {
-          riderId: rider.id,
-          status: DeliveryStatus.DELIVERED,
-          assignedAt: lagosDate(-14, 11),
-          pickedUpAt: lagosDate(-14, 12, 20),
-          deliveredAt: lagosDate(-14, 12, 55),
-          proofNote: "Handed to Amaka at the fellowship hall door.",
-        },
-      },
-    },
-    include: { lines: true },
-  })
-
-  const plateLine = order.lines[0]
-  if (!plateLine) throw new Error("Sample order has no plate line")
-
-  await prisma.orderLine.create({
-    data: {
-      orderId: order.id,
-      parentLineId: plateLine.id,
-      itemName: drink.name,
-      slotLabel: "Opening · Lunch",
-      serveAt: offering.mealSlot.serveAt,
-      quantity: 1,
-      unitPriceKobo: drink.priceKobo,
-      lineTotalKobo: drink.priceKobo,
-    },
-  })
-
-  await prisma.slotOffering.update({
-    where: { id: offering.id },
-    data: { portionsSold: 1 },
-  })
-
-  await prisma.kitchenBatch.create({
-    data: {
-      mealSlotId: offering.mealSlotId,
-      menuItemId: offering.menuItemId,
-      slotOfferingId: offering.id,
-      portionsPlanned: 1,
-      portionsPacked: 1,
-      status: BatchStatus.HANDED_OFF,
-    },
-  })
+    })
+  }
 }
 
 main()

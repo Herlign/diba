@@ -14,13 +14,24 @@ const fraunces = Fraunces({
   variable: "--font-fraunces",
 })
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://127.0.0.1:4317"
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
     default: "Diba Meals",
     template: "%s · Diba Meals",
   },
   description:
-    "Pre-order Nigerian plates for multi-day church programmes. Packed, labelled, and waiting at the venue.",
+    "Your meals, sorted for the whole church programme. Pick your days, choose morning and evening plates, and we deliver them at the venue.",
+  openGraph: {
+    title: "Diba Meals",
+    description:
+      "Meal pre-orders for multi-day church programmes in Lagos. Morning and evening, delivered where you sit.",
+    locale: "en_NG",
+    type: "website",
+    url: siteUrl,
+  },
 }
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

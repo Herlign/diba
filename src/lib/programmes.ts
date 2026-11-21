@@ -1,101 +1,87 @@
 import "server-only"
 
-import { connection } from "next/server"
-import {
-  PUBLIC_PROGRAMME_STATUSES,
-  type ListStatusFilter,
-} from "@/lib/domain"
+import { ProgrammeStatus } from "@/lib/domain"
 import { prisma } from "@/lib/prisma"
-import {
-  programmeListWhere,
-  sortProgrammes,
-  type ProgrammeCardSource,
-} from "@/lib/programme-query"
+import { programmeListWhere, startingPriceKobo } from "@/lib/programme-query"
 
-export const programmeCardInclude = {
-  days: {
-    orderBy: { sortOrder: "asc" as const },
-    include: {
-      slots: {
-        orderBy: { sortOrder: "asc" as const },
-        include: {
-          offerings: {
-            where: { isAvailable: true },
-            include: {
-              menuItem: {
-                select: { priceKobo: true, category: true, name: true },
-              },
-            },
-          },
-        },
+const programmeInclude = {
+  church: true,
+  venue: true,
+  mealPeriods: { orderBy: { position: "asc" as const } },
+  menuItems: {
+    where: {
+      isActive: true,
+      variant: {
+        menuItem: { category: { slug: { in: ["breakfast", "rice-dishes", "swallow"] } } },
       },
     },
+    include: { variant: { select: { priceKobo: true } } },
   },
 }
 
-export type ProgrammeCard = ProgrammeCardSource & {
+export type ProgrammeCard = {
   slug: string
+  code: string
   title: string
-  ministryName: string
-  summary: string
-  city: string
-  state: string
+  description: string
+  churchName: string
   venueName: string
-  startsOn: Date
-  endsOn: Date
+  startDate: Date
+  endDate: Date
   status: string
-  accent: string
+  coverImageUrl: string | null
+  fromKobo: number | null
+  periods: { name: string; start: string; end: string }[]
 }
 
-export async function listProgrammes(input: {
-  status: ListStatusFilter
-  city?: string
-  q?: string
-}): Promise<ProgrammeCard[]> {
-  await connection()
-  const now = new Date()
-  const rows = await prisma.programme.findMany({
-    where: programmeListWhere({ ...input, now }),
-    include: programmeCardInclude,
-  })
-  return sortProgrammes(rows, now)
-}
-
-export async function listFeaturedProgrammes(): Promise<ProgrammeCard[]> {
-  const rows = await prisma.programme.findMany({
-    where: { status: "ORDERING_OPEN" },
-    orderBy: { startsOn: "asc" },
-    take: 3,
-    include: programmeCardInclude,
-  })
-  return rows
-}
-
-export async function listPublicCities(): Promise<string[]> {
-  const rows = await prisma.programme.findMany({
-    where: { status: { in: PUBLIC_PROGRAMME_STATUSES } },
-    select: { city: true },
-    distinct: ["city"],
-    orderBy: { city: "asc" },
-  })
-  return rows.map((row) => row.city)
-}
-
-export async function catalogueStats() {
-  const [programmes, cities, plates] = await Promise.all([
-    prisma.programme.count({
-      where: { status: { in: PUBLIC_PROGRAMME_STATUSES } },
-    }),
-    prisma.programme.findMany({
-      where: { status: { in: PUBLIC_PROGRAMME_STATUSES } },
-      select: { city: true },
-      distinct: ["city"],
-    }),
-    prisma.menuItem.count({ where: { category: "PLATE", isActive: true } }),
-  ])
+function toCard(row: {
+  slug: string
+  code: string
+  title: string
+  description: string
+  coverImageUrl: string | null
+  startDate: Date
+  endDate: Date
+  status: string
+  church: { name: string }
+  venue: { name: string }
+  mealPeriods: { name: string; deliveryWindowStart: string; deliveryWindowEnd: string }[]
+  menuItems: { priceKoboOverride: number | null; variant: { priceKobo: number } }[]
+}): ProgrammeCard {
   return {
-    programmes,
-    cities: cities.length,
-    plates,
+    slug: row.slug,
+    code: row.code,
+    title: row.title,
+    description: row.description,
+    churchName: row.church.name,
+    venueName: row.venue.name,
+    startDate: row.startDate,
+    endDate: row.endDate,
+    status: row.status,
+    coverImageUrl: row.coverImageUrl,
+    fromKobo: startingPriceKobo(row.menuItems),
+    periods: row.mealPeriods.map((period) => ({
+      name: period.name,
+      start: period.deliveryWindowStart,
+      end: period.deliveryWindowEnd,
+    })),
   }
+}
+
+export async function listProgrammes(q?: string): Promise<ProgrammeCard[]> {
+  const rows = await prisma.programme.findMany({
+    where: programmeListWhere({ q }),
+    include: programmeInclude,
+    orderBy: { startDate: "asc" },
+  })
+  return rows.map(toCard)
+}
+
+export async function listUpcomingProgrammes(): Promise<ProgrammeCard[]> {
+  const rows = await prisma.programme.findMany({
+    where: { status: ProgrammeStatus.PUBLISHED },
+    include: programmeInclude,
+    orderBy: { startDate: "asc" },
+  })
+  return rows.map(toCard)
 }

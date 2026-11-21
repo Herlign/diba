@@ -6,24 +6,44 @@ import { DishMarquee } from "@/components/home/dish-marquee"
 import { Reveal } from "@/components/home/reveal"
 import { ProgrammeCard } from "@/components/programmes/programme-card"
 import { ProgrammeListSkeleton } from "@/components/programmes/programme-list"
+import { Search } from "lucide-react"
 import { egusi, friedRice, grilledChicken, grilledFish, jollof, plantain } from "@/lib/food-photos"
-import { catalogueStats, listFeaturedProgrammes } from "@/lib/programmes"
+import { listUpcomingProgrammes } from "@/lib/programmes"
 
 const steps = [
   {
     number: "01",
-    title: "Your church opens the pot",
-    body: "They send the dates, the blocks, and how many people are actually coming. We don't guess from last year's crusade.",
+    title: "Pick your days",
+    body: "Find the programme your church shared — by name, or by a code like CROSS26 — and tick the days you are actually staying.",
   },
   {
     number: "02",
-    title: "You pick every sitting",
-    body: "Jollof on Friday, egusi on Saturday, something calmer for the children. One list covers the whole weekend.",
+    title: "Choose meals",
+    body: "Morning, evening, or a plan that fills the week. Same breakfast every day is one tap. You can still change a slot.",
   },
   {
     number: "03",
-    title: "We call your block",
-    body: "The pack has your name on it. When the session ends, you collect it and go back in. No buffet scrum.",
+    title: "We deliver at the venue",
+    body: "Your pack meets you at Gate A, the hostel, or children's church. No queue outside the camp.",
+  },
+]
+
+const faqs = [
+  {
+    q: "When does ordering close?",
+    a: "24 hours before that meal's delivery window starts. For a 7:00am breakfast, the list locks at 7:00am the day before.",
+  },
+  {
+    q: "Where do I collect?",
+    a: "At a delivery point inside the venue — the auditorium gate, a hostel block, or the children's hall. You choose it at checkout.",
+  },
+  {
+    q: "What about refunds?",
+    a: "A slot still before its cutoff can be cancelled. That raises a refund request for the church team. The MVP does not refund automatically.",
+  },
+  {
+    q: "Can I order for a group?",
+    a: "Yes. Checkout asks how many people the order feeds, and you can put a family or department name on it.",
   },
 ]
 
@@ -52,26 +72,35 @@ export default function HomePage() {
               Lagos & Ile-Ife kitchens · church programmes
             </p>
             <h1 className="mt-3 max-w-xl font-heading text-4xl leading-[0.98] text-balance sm:text-6xl">
-              Benediction dropped. Your <span className="bg-gold px-1 text-ink">jollof</span> is already at Block B.
+              Your meals, sorted for the <span className="bg-gold px-1 text-ink">whole programme</span>.
             </h1>
             <p className="mt-5 max-w-lg text-base leading-7 text-cream/85 sm:text-lg">
-              We cook the whole programme in one go. Friday night rice, Saturday swallow, Sunday lunch — labelled, packed, and waiting where you sit. No queue. No &quot;who took my chicken?&quot;
+              Conventions, crossovers, retreats. Pick your days, choose morning and evening plates, and we bring them to your block. No queue on the expressway.
             </p>
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              <Link
-                href="/programmes"
-                className="link-fade inline-flex h-12 items-center rounded-lg bg-gold px-5 text-sm font-semibold text-ink"
+            <form action="/programmes" method="get" className="mt-7 flex max-w-lg flex-col gap-2 sm:flex-row">
+              <label className="sr-only" htmlFor="find-programme">
+                Find your programme
+              </label>
+              <div className="flex min-h-12 flex-1 items-center gap-2 rounded-lg bg-cream px-3 text-ink">
+                <Search className="size-4 shrink-0" aria-hidden="true" />
+                <input
+                  id="find-programme"
+                  name="q"
+                  placeholder="Find your programme — church, name or code"
+                  className="h-12 w-full bg-transparent text-base outline-none placeholder:text-ink/50"
+                />
+              </div>
+              <button
+                type="submit"
+                className="link-fade inline-flex h-12 items-center justify-center rounded-lg bg-gold px-5 text-sm font-semibold text-ink"
               >
-                See open programmes
-              </Link>
-              <a href="#how-it-works" className="link-fade text-sm font-semibold text-cream underline decoration-gold decoration-2 underline-offset-4">
-                How we feed a church
-              </a>
-            </div>
-            <ul className="mt-8 flex flex-col gap-2 text-sm text-cream/80 sm:flex-row sm:gap-5">
-              <li>Locks at 6pm the day before</li>
-              <li>Your name on the pack</li>
-              <li>Packs from ₦6,500</li>
+                Search
+              </button>
+            </form>
+            <ul className="mt-6 flex flex-col gap-2 text-sm text-cream/80 sm:flex-row sm:gap-5">
+              <li>Cutoff is 24 hours before</li>
+              <li>Morning 7–9am · Evening 6–8pm</li>
+              <li>Delivered at the venue</li>
             </ul>
           </div>
           <div className="rise rise-late relative mb-36 sm:mb-24">
@@ -141,12 +170,12 @@ export default function HomePage() {
         <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:py-16">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h2 className="font-heading text-4xl sm:text-5xl">Open this week</h2>
+              <h2 className="font-heading text-4xl sm:text-5xl">Upcoming programmes</h2>
               <p className="mt-2 max-w-md text-sm leading-6 text-cream/80">
-                6pm the day before, the list locks. Don&apos;t be the person negotiating with the usher.
+                Published programmes only. Drafts stay in the office until the church is ready.
               </p>
             </div>
-            <Link href="/programmes?status=open" className="link-fade text-sm font-semibold text-gold">
+            <Link href="/programmes" className="link-fade text-sm font-semibold text-gold">
               All programmes
             </Link>
           </div>
@@ -157,22 +186,33 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <section id="faq" className="bg-cream text-ink">
+        <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-12 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:py-16">
+          <h2 className="font-heading text-4xl">Before you order</h2>
+          <div className="grid gap-3">
+            {faqs.map((item) => (
+              <details key={item.q} className="rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
+                <summary className="cursor-pointer text-base font-semibold">{item.q}</summary>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   )
 }
 
 async function FeaturedProgrammes() {
-  let programmes: Awaited<ReturnType<typeof listFeaturedProgrammes>> | null = null
-  let stats: Awaited<ReturnType<typeof catalogueStats>> | null = null
+  let programmes: Awaited<ReturnType<typeof listUpcomingProgrammes>> | null = null
   let failed = false
   try {
-    const result = await Promise.all([listFeaturedProgrammes(), catalogueStats()])
-    programmes = result[0]
-    stats = result[1]
+    programmes = await listUpcomingProgrammes()
   } catch {
     failed = true
   }
-  if (failed || !programmes || !stats) {
+  if (failed || !programmes) {
     return (
       <div className="rounded-2xl bg-cream px-6 py-10 text-ink">
         <p className="font-heading text-2xl">The board didn&apos;t load</p>
@@ -184,31 +224,25 @@ async function FeaturedProgrammes() {
   }
   return (
     <div className="space-y-6">
-      <dl className="grid grid-cols-3 gap-2 rounded-2xl bg-gold p-3 text-ink sm:p-5">
+      <dl className="grid grid-cols-2 gap-2 rounded-2xl bg-gold p-3 text-ink sm:p-5">
         <div>
           <dt className="text-xs font-medium sm:text-sm">Programmes</dt>
           <dd className="font-heading text-3xl sm:text-5xl">
-            <CountUp value={stats.programmes} />
+            <CountUp value={programmes.length} />
           </dd>
         </div>
         <div>
-          <dt className="text-xs font-medium sm:text-sm">Cities</dt>
+          <dt className="text-xs font-medium sm:text-sm">Churches</dt>
           <dd className="font-heading text-3xl sm:text-5xl">
-            <CountUp value={stats.cities} />
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs font-medium sm:text-sm">Plates</dt>
-          <dd className="font-heading text-3xl sm:text-5xl">
-            <CountUp value={stats.plates} />
+            <CountUp value={new Set(programmes.map((item) => item.churchName)).size} />
           </dd>
         </div>
       </dl>
       {programmes.length === 0 ? (
         <div className="rounded-2xl bg-cream px-6 py-10 text-ink">
-          <p className="font-heading text-2xl">Nothing is open today</p>
+          <p className="font-heading text-2xl">Nothing is published yet</p>
           <p className="mt-2 text-sm text-muted-foreground">
-            The announced programmes are still on the full list.
+            When a church opens a programme, it will land here.
           </p>
         </div>
       ) : (

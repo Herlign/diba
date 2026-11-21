@@ -1,19 +1,12 @@
-const LAGOS = "Africa/Lagos"
+import { formatInTimeZone } from "date-fns-tz"
+
+export const LAGOS = "Africa/Lagos"
 
 function parts(date: Date) {
-  const fmt = new Intl.DateTimeFormat("en-GB", {
-    timeZone: LAGOS,
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
-  const bag = Object.fromEntries(
-    fmt.formatToParts(date).map((part) => [part.type, part.value]),
-  )
   return {
-    day: bag.day ?? "",
-    month: bag.month ?? "",
-    year: bag.year ?? "",
+    day: formatInTimeZone(date, LAGOS, "d"),
+    month: formatInTimeZone(date, LAGOS, "MMM"),
+    year: formatInTimeZone(date, LAGOS, "yyyy"),
   }
 }
 
@@ -32,14 +25,16 @@ export function formatDateRange(start: Date, end: Date): string {
   return `${a.day} ${a.month} ${a.year} – ${b.day} ${b.month} ${b.year}`
 }
 
-export function formatLagosWhen(date: Date): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    timeZone: LAGOS,
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "numeric",
-    minute: "2-digit",
-    hourCycle: "h12",
-  }).format(date)
+export function formatWindow(start: string, end: string) {
+  return `${formatClock(start)}–${formatClock(end)}`
+}
+
+export function formatClock(hhmm: string) {
+  const [hourText, minuteText] = hhmm.split(":")
+  const hour = Number(hourText)
+  const minute = Number(minuteText)
+  const suffix = hour >= 12 ? "pm" : "am"
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12
+  const minutes = minute === 0 ? "00" : String(minute).padStart(2, "0")
+  return `${hour12}:${minutes}${suffix}`
 }

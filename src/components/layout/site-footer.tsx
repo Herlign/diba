@@ -1,4 +1,3 @@
-import Link from "next/link"
 import { Logo } from "@/components/layout/logo"
 import { foodPhotos } from "@/lib/food-photos"
 
@@ -14,10 +13,13 @@ export function SiteFooter() {
             </p>
           </div>
           <div className="text-sm text-cream/80">
-            <p>Orders lock at 6pm the day before each meal.</p>
-            <Link href="/programmes" className="link-fade mt-2 inline-block font-semibold text-gold">
-              See who&apos;s eating
-            </Link>
+            <p>Orders close 24 hours before each meal.</p>
+            <a
+              href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_E164 ?? "2348090002210"}`}
+              className="link-fade mt-2 inline-flex h-11 items-center font-semibold text-gold"
+            >
+              WhatsApp support
+            </a>
           </div>
         </div>
         <div className="border-t border-cream/15 pt-4 text-xs leading-5 text-cream/70">
