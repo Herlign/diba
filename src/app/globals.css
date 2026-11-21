@@ -1,0 +1,270 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, monospace;
+  --font-heading: var(--font-fraunces), ui-serif, Georgia, serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-gold: var(--gold);
+  --color-clay: var(--clay);
+  --color-palm: var(--palm);
+  --color-cream: var(--cream);
+  --color-ink: var(--ink);
+  --color-tomato: var(--tomato);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: #f7f6f3;
+  --foreground: #1a120c;
+  --card: #ffffff;
+  --card-foreground: #1a120c;
+  --popover: #ffffff;
+  --popover-foreground: #1a120c;
+  --primary: #0e7a45;
+  --primary-foreground: #fff6ee;
+  --secondary: #eef6f1;
+  --secondary-foreground: #1a120c;
+  --muted: #f3f1ec;
+  --muted-foreground: #5c5348;
+  --accent: #e23b2f;
+  --accent-foreground: #fff6ee;
+  --destructive: #c81d25;
+  --border: #e6e1d8;
+  --input: #e6e1d8;
+  --ring: #0e7a45;
+  --gold: #f5b301;
+  --clay: #f26b21;
+  --palm: #0c3d2e;
+  --cream: #fff6ee;
+  --ink: #1a120c;
+  --tomato: #c81d25;
+  --chart-1: #0e7a45;
+  --chart-2: #e23b2f;
+  --chart-3: #f5b301;
+  --chart-4: #f26b21;
+  --chart-5: #0c3d2e;
+  --radius: 0.85rem;
+  --sidebar: #fffdf8;
+  --sidebar-foreground: #1c1915;
+  --sidebar-primary: #1b5e45;
+  --sidebar-primary-foreground: #f6f1e7;
+  --sidebar-accent: #efe4d2;
+  --sidebar-accent-foreground: #1c1915;
+  --sidebar-border: #e3d6c3;
+  --sidebar-ring: #1b5e45;
+}
+
+.dark {
+  --background: #141210;
+  --foreground: #f6f1e7;
+  --card: #1e1b17;
+  --card-foreground: #f6f1e7;
+  --popover: #1e1b17;
+  --popover-foreground: #f6f1e7;
+  --primary: #8fceae;
+  --primary-foreground: #10261c;
+  --secondary: #2a2621;
+  --secondary-foreground: #f6f1e7;
+  --muted: #2a2621;
+  --muted-foreground: #cbbba6;
+  --accent: #e08a62;
+  --accent-foreground: #2a120c;
+  --destructive: #e07a72;
+  --border: rgb(246 241 231 / 12%);
+  --input: rgb(246 241 231 / 16%);
+  --ring: #8fceae;
+  --gold: #e2b15a;
+  --clay: #e08a62;
+  --palm: #8fceae;
+  --cream: #141210;
+  --ink: #f6f1e7;
+  --chart-1: #8fceae;
+  --chart-2: #e08a62;
+  --chart-3: #e2b15a;
+  --chart-4: #cbbba6;
+  --chart-5: #f6f1e7;
+  --sidebar: #1e1b17;
+  --sidebar-foreground: #f6f1e7;
+  --sidebar-primary: #8fceae;
+  --sidebar-primary-foreground: #10261c;
+  --sidebar-accent: #2a2621;
+  --sidebar-accent-foreground: #f6f1e7;
+  --sidebar-border: rgb(246 241 231 / 12%);
+  --sidebar-ring: #8fceae;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-fraunces), ui-serif, Georgia, serif;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  animation: rise 0.4s cubic-bezier(0.215, 0.61, 0.355, 1) both;
+}
+
+.rise-late {
+  animation-delay: 0.12s;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee {
+  overflow: hidden;
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 28s linear infinite;
+}
+
+.reveal {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .js .reveal:not(.reveal-in) {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  .js .reveal.reveal-in {
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity 0.35s cubic-bezier(0.215, 0.61, 0.355, 1),
+      transform 0.35s cubic-bezier(0.215, 0.61, 0.355, 1);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .programme-card {
+    transition: transform 200ms ease;
+  }
+
+  .programme-card:hover {
+    transform: translateY(-4px);
+  }
+
+  .programme-card .food-photo {
+    transition: transform 0.35s cubic-bezier(0.215, 0.61, 0.355, 1);
+  }
+
+  .programme-card:hover .food-photo {
+    transform: scale(1.04);
+  }
+
+  .marquee:hover .marquee-track {
+    animation-play-state: paused;
+  }
+
+  .link-fade {
+    transition: color 200ms ease, background-color 200ms ease, opacity 200ms ease;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .rise-late,
+  .marquee-track {
+    animation: none;
+  }
+
+  .marquee-track {
+    flex-wrap: wrap;
+    width: auto;
+    justify-content: center;
+  }
+
+  .programme-card,
+  .programme-card:hover,
+  .programme-card .food-photo,
+  .programme-card:hover .food-photo,
+  .reveal,
+  .js .reveal:not(.reveal-in) {
+    transform: none;
+    opacity: 1;
+    transition: none;
+  }
+}
+
+:focus-visible {
+  outline: 2px solid var(--palm);
+  outline-offset: 2px;
+}
+
+@media print {
+  .ops-chrome {
+    display: none !important;
+  }
+}
