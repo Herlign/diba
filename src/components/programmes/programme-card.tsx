@@ -29,13 +29,13 @@ export function ProgrammeCard({ programme }: { programme: ProgrammeCardData }) {
   const photo = coverPhoto(programme)
   return (
     <article id={programme.slug} className="programme-card h-full scroll-mt-24">
-      <div className="flex h-full flex-col overflow-hidden rounded-2xl bg-card text-ink shadow-[0_12px_0_0_#1a120c]">
+      <div className="flex h-full flex-col overflow-hidden rounded-2xl bg-white text-ink ring-1 ring-foreground/10">
         <div className="relative aspect-[4/3] overflow-hidden bg-gold">
           <FoodImage photo={photo} className="food-photo" />
           <Badge className={`absolute top-3 left-3 z-10 ${statusClass(programme.status)}`}>
             {STATUS_LABEL[programme.status] ?? programme.status}
           </Badge>
-          <span className="absolute top-3 right-3 z-10 rounded-full bg-ink/80 px-2 py-1 text-xs font-semibold text-cream">
+          <span className="absolute top-3 right-3 z-10 rounded-full bg-white/95 px-2 py-1 text-xs font-semibold text-palm">
             {programme.code}
           </span>
         </div>
@@ -58,13 +58,13 @@ export function ProgrammeCard({ programme }: { programme: ProgrammeCardData }) {
             ))}
           </ul>
         </div>
-        <div className="mt-auto flex items-center justify-between gap-3 bg-gold px-4 py-3 text-ink">
-          <span className="font-heading text-2xl">
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-border px-4 py-3">
+          <span className="font-heading text-2xl text-palm">
             {programme.fromKobo === null ? "Menu soon" : formatNaira(programme.fromKobo)}
           </span>
           <Link
             href={`/programmes#${programme.slug}`}
-            className="inline-flex h-11 min-w-11 items-center rounded-lg bg-ink px-4 text-sm font-semibold text-cream"
+            className="inline-flex h-11 min-w-11 items-center rounded-lg bg-palm px-4 text-sm font-semibold text-cream"
           >
             Order meals
           </Link>

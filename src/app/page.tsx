@@ -65,24 +65,24 @@ const slip = [
 export default function HomePage() {
   return (
     <div>
-      <section className="bg-palm text-cream">
+      <section className="bg-white text-ink">
         <div className="mx-auto grid w-full max-w-6xl items-center gap-8 px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-12 lg:py-16">
           <div className="rise">
-            <p className="text-sm font-semibold tracking-wide text-gold uppercase">
+            <p className="text-sm font-semibold tracking-wide text-palm uppercase">
               Lagos & Ile-Ife kitchens · church programmes
             </p>
             <h1 className="mt-3 max-w-xl font-heading text-4xl leading-[0.98] text-balance sm:text-6xl">
               Your meals, sorted for the <span className="bg-gold px-1 text-ink">whole programme</span>.
             </h1>
-            <p className="mt-5 max-w-lg text-base leading-7 text-cream/85 sm:text-lg">
+            <p className="mt-5 max-w-lg text-base leading-7 text-muted-foreground sm:text-lg">
               Conventions, crossovers, retreats. Pick your days, choose morning and evening plates, and we bring them to your block. No queue on the expressway.
             </p>
             <form action="/programmes" method="get" className="mt-7 flex max-w-lg flex-col gap-2 sm:flex-row">
               <label className="sr-only" htmlFor="find-programme">
                 Find your programme
               </label>
-              <div className="flex min-h-12 flex-1 items-center gap-2 rounded-lg bg-cream px-3 text-ink">
-                <Search className="size-4 shrink-0" aria-hidden="true" />
+              <div className="flex min-h-12 flex-1 items-center gap-2 rounded-lg border border-border bg-white px-3 text-ink">
+                <Search className="size-4 shrink-0 text-palm" aria-hidden="true" />
                 <input
                   id="find-programme"
                   name="q"
@@ -92,22 +92,22 @@ export default function HomePage() {
               </div>
               <button
                 type="submit"
-                className="link-fade inline-flex h-12 items-center justify-center rounded-lg bg-gold px-5 text-sm font-semibold text-ink"
+                className="link-fade inline-flex h-12 items-center justify-center rounded-lg bg-palm px-5 text-sm font-semibold text-cream"
               >
                 Search
               </button>
             </form>
-            <ul className="mt-6 flex flex-col gap-2 text-sm text-cream/80 sm:flex-row sm:gap-5">
+            <ul className="mt-6 flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:gap-5">
               <li>Cutoff is 24 hours before</li>
               <li>Morning 7–9am · Evening 6–8pm</li>
               <li>Delivered at the venue</li>
             </ul>
           </div>
           <div className="rise rise-late relative mb-36 sm:mb-24">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border-4 border-gold bg-gold shadow-[8px_8px_0_0_#f26b21] sm:shadow-[12px_12px_0_0_#f26b21]">
+            <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border-4 border-gold bg-gold shadow-[0_18px_40px_-24px_rgba(12,61,46,0.55)]">
               <FoodImage photo={jollof} priority />
             </div>
-            <div className="absolute -bottom-4 left-3 right-3 rounded-xl bg-gold p-3 text-ink shadow-[4px_4px_0_0_#c81d25] sm:right-auto sm:left-4 sm:max-w-xs sm:p-4">
+            <div className="absolute -bottom-4 left-3 right-3 rounded-xl bg-gold p-3 text-ink shadow-[0_10px_24px_-16px_rgba(26,18,12,0.45)] sm:right-auto sm:left-4 sm:max-w-xs sm:p-4">
               <p className="text-xs font-semibold tracking-wide uppercase">Greater Light · Ikeja</p>
               <ul className="mt-2 space-y-1 text-sm font-medium">
                 {slip.map((row) => (
@@ -124,40 +124,40 @@ export default function HomePage() {
 
       <DishMarquee />
 
-      <section id="how-it-works" className="bg-tomato text-cream">
+      <section id="how-it-works" className="bg-[#f7f6f3] text-ink">
         <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-3 lg:py-16">
           {steps.map((step, index) => (
             <Reveal key={step.number} delay={index * 60}>
-              <p className="inline-flex size-10 items-center justify-center rounded-full bg-gold font-heading text-sm text-ink">
+              <p className="inline-flex size-10 items-center justify-center rounded-full bg-palm font-heading text-sm text-cream">
                 {step.number}
               </p>
               <h2 className="mt-4 font-heading text-3xl leading-tight">{step.title}</h2>
-              <p className="mt-2 text-sm leading-6 text-cream/85">{step.body}</p>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">{step.body}</p>
             </Reveal>
           ))}
         </div>
       </section>
 
-      <section className="bg-[linear-gradient(160deg,#f26b21_0%,#e23b2f_100%)] text-cream">
+      <section className="bg-white text-ink">
         <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:py-16">
           <Reveal>
-            <h2 className="max-w-xl font-heading text-4xl leading-tight sm:text-5xl">
+            <h2 className="max-w-xl font-heading text-4xl leading-tight text-ink sm:text-5xl">
               What the kitchen is actually proud of
             </h2>
-            <p className="mt-3 max-w-lg text-sm leading-6 text-cream/90">
+            <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground">
               Complete plates. Not a scoop-and-pray buffet, and not rice that went cold while the choir did the third chorus.
             </p>
           </Reveal>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {plates.map((plate, index) => (
               <Reveal key={plate.name} delay={index * 40}>
-                <article className="overflow-hidden rounded-2xl bg-ink text-cream shadow-[0_10px_0_0_#1a120c]">
-                  <div className="relative aspect-[4/3] bg-gold">
+                <article className="overflow-hidden rounded-2xl bg-white text-ink ring-1 ring-foreground/10">
+                  <div className="relative aspect-[4/3] bg-muted">
                     <FoodImage photo={plate.photo} />
                   </div>
                   <div className="p-4">
-                    <h3 className="font-heading text-2xl">{plate.name}</h3>
-                    <p className="mt-1 text-sm text-cream/75">{plate.note}</p>
+                    <h3 className="font-heading text-2xl text-ink">{plate.name}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">{plate.note}</p>
                   </div>
                 </article>
               </Reveal>
@@ -166,16 +166,16 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="bg-palm text-cream">
+      <section className="bg-[#f7f6f3] text-ink">
         <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:py-16">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <h2 className="font-heading text-4xl sm:text-5xl">Upcoming programmes</h2>
-              <p className="mt-2 max-w-md text-sm leading-6 text-cream/80">
+              <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
                 Published programmes only. Drafts stay in the office until the church is ready.
               </p>
             </div>
-            <Link href="/programmes" className="link-fade text-sm font-semibold text-gold">
+            <Link href="/programmes" className="link-fade text-sm font-semibold text-palm">
               All programmes
             </Link>
           </div>
@@ -187,7 +187,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section id="faq" className="bg-cream text-ink">
+      <section id="faq" className="bg-white text-ink">
         <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-12 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:py-16">
           <h2 className="font-heading text-4xl">Before you order</h2>
           <div className="grid gap-3">
@@ -224,16 +224,16 @@ async function FeaturedProgrammes() {
   }
   return (
     <div className="space-y-6">
-      <dl className="grid grid-cols-2 gap-2 rounded-2xl bg-gold p-3 text-ink sm:p-5">
+      <dl className="grid grid-cols-2 gap-2 rounded-2xl bg-white p-3 text-ink ring-1 ring-foreground/10 sm:p-5">
         <div>
           <dt className="text-xs font-medium sm:text-sm">Programmes</dt>
-          <dd className="font-heading text-3xl sm:text-5xl">
+          <dd className="font-heading text-3xl text-palm sm:text-5xl">
             <CountUp value={programmes.length} />
           </dd>
         </div>
         <div>
           <dt className="text-xs font-medium sm:text-sm">Churches</dt>
-          <dd className="font-heading text-3xl sm:text-5xl">
+          <dd className="font-heading text-3xl text-palm sm:text-5xl">
             <CountUp value={new Set(programmes.map((item) => item.churchName)).size} />
           </dd>
         </div>

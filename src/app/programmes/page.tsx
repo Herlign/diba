@@ -22,13 +22,13 @@ export default function ProgrammesPage({
 }) {
   return (
     <div>
-      <header className="bg-tomato text-cream">
+      <header className="border-b border-border bg-white text-ink">
         <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
-          <p className="text-sm font-semibold tracking-wide text-gold uppercase">The board</p>
+          <p className="text-sm font-semibold tracking-wide text-palm uppercase">The board</p>
           <h1 className="mt-2 max-w-2xl font-heading text-4xl leading-tight sm:text-5xl">
             Find your programme
           </h1>
-          <p className="mt-3 max-w-xl text-base leading-7 text-cream/90">
+          <p className="mt-3 max-w-xl text-base leading-7 text-muted-foreground">
             Search by church, programme name, or the code on the poster. Ordering for a meal closes 24 hours before it is delivered.
           </p>
         </div>
@@ -70,7 +70,7 @@ async function ProgrammeResults({
         </div>
         <button
           type="submit"
-          className="inline-flex h-12 items-center justify-center rounded-lg bg-ink px-5 text-sm font-semibold text-cream"
+          className="inline-flex h-12 items-center justify-center rounded-lg bg-palm px-5 text-sm font-semibold text-cream"
         >
           Search
         </button>
