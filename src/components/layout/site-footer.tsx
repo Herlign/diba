@@ -14,6 +14,9 @@ export function SiteFooter() {
           </div>
           <div className="text-sm text-muted-foreground">
             <p>Orders close 24 hours before each meal.</p>
+            <a href="/admin/login" className="link-fade mt-2 inline-flex h-11 items-center font-semibold text-palm">
+              Staff
+            </a>
             <a
               href={`https://wa.me/${process.env.NEXT_PUBLIC_WHATSAPP_E164 ?? "2348090002210"}`}
               className="link-fade mt-2 inline-flex h-11 items-center font-semibold text-palm"

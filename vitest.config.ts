@@ -9,6 +9,8 @@ export default defineConfig({
       "src/lib/checkout/**/*.test.ts",
       "src/lib/payments/**/*.test.ts",
       "src/lib/passes/**/*.test.ts",
+      "src/lib/auth/**/*.test.ts",
+      "src/lib/kitchen/**/*.test.ts",
     ],
   },
   resolve: {

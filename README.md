@@ -2,7 +2,7 @@
 
 Diba Meals is a meal pre-order app for multi-day Nigerian church programmes. An attendee finds a programme, picks days and meal periods, pays, and collects a meal pass for each slot at the venue.
 
-This repository is through **Phase 3 (checkout and payments)**: the ordering flow, registration, a server-side checkout that re-prices and re-checks capacity, Paystack with `PAYMENTS_MODE=mock`, a signed webhook, QR meal passes, confirmation email, and my-orders via a magic link. Admin and kitchen screens come in later phases.
+This repository is through **Phase 4 (admin and ops)**: checkout and payments, plus staff sign-in, the ops dashboard, kitchen prep sheets, and dispatch with a pass scanner. Polish, analytics, and the Playwright suite come in a later phase.
 
 ## Run it
 
@@ -77,12 +77,12 @@ Re-running the seed wipes and reloads these rows.
 | Kitchen | kitchen@dibameals.test | DibaKitchen!2026 |
 | Dispatch | dispatch@dibameals.test | DibaDispatch!2026 |
 
-Staff sign-in is phase 4. The hashes are in the database so that phase does not need a new seed shape.
+Staff sign in at `/admin/login`. The kitchen opens `/admin/kitchen`, dispatch opens `/admin/dispatch`, and an admin sees the full dashboard. Pass scans only succeed on the meal's day, inside the delivery window (45 minutes either side), and a pass works once.
 
 ## Later phases
 
 1. Foundation
 2. Programme page, day × period grid, menu, plans, cart, priced review, business-rule tests
-3. Checkout, Paystack and mock mode, webhook, meal passes, email, my orders (this app)
-4. Admin, kitchen sheet, dispatch scanner, promo codes
+3. Checkout, Paystack and mock mode, webhook, meal passes, email, my orders
+4. Admin, kitchen sheet, dispatch scanner, promo codes (this app)
 5. Dynamic OG images, analytics events, rate limits, Playwright, deploy checklist

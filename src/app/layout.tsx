@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
 import { Fraunces, Outfit } from "next/font/google"
-import { SiteFooter } from "@/components/layout/site-footer"
-import { SiteHeader } from "@/components/layout/site-header"
+import { SiteChrome } from "@/components/layout/site-chrome"
 import "./globals.css"
 
 const outfit = Outfit({
@@ -47,11 +46,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           Skip to content
         </a>
-        <SiteHeader />
-        <main id="main" className="flex-1">
-          {children}
-        </main>
-        <SiteFooter />
+        <SiteChrome>{children}</SiteChrome>
       </body>
     </html>
   )

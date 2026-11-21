@@ -257,3 +257,9 @@
     transition: none;
   }
 }
+
+@media print {
+  .ops-chrome {
+    display: none !important;
+  }
+}
