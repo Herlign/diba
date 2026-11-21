@@ -1,0 +1,259 @@
+// Phase 1 schema covers later ordering, Paystack, kitchen, and delivery.
+// SQLite has no native enums; status fields are strings constrained in src/lib/domain.ts.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Attendee, coordinator, kitchen, rider, or admin. Auth is a later phase.
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  phone        String?
+  /// ATTENDEE | COORDINATOR | KITCHEN | RIDER | ADMIN
+  role         String   @default("ATTENDEE")
+  passwordHash String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  coordinated Programme[] @relation("ProgrammeCoordinator")
+  orders      Order[]    @relation("OrderCustomer")
+  rides       Delivery[] @relation("DeliveryRider")
+}
+
+/// A multi-day church programme that Diba Meals cooks for.
+model Programme {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  title         String
+  ministryName  String
+  summary       String
+  description   String
+  city          String
+  state         String
+  venueName     String
+  venueAddress  String
+  landmark      String?
+  startsOn      DateTime
+  endsOn        DateTime
+  /// DRAFT | PUBLISHED | ORDERING_OPEN | ORDERING_CLOSED | LIVE | COMPLETED | CANCELLED
+  status        String   @default("DRAFT")
+  timezone      String   @default("Africa/Lagos")
+  /// Copied onto each MealSlot.orderCutoffAt. PREVIOUS_DAY_18 = 18:00 Africa/Lagos the day before.
+  cutoffRule    String   @default("PREVIOUS_DAY_18")
+  currency      String   @default("NGN")
+  /// Card accent: palm | clay | gold | ink
+  accent        String   @default("palm")
+  contactName   String
+  contactPhone  String
+  coordinatorId String?
+  coordinator   User?    @relation("ProgrammeCoordinator", fields: [coordinatorId], references: [id], onDelete: SetNull)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  days       ProgrammeDay[]
+  dropPoints DropPoint[]
+  orders     Order[]
+
+  @@index([status, startsOn])
+  @@index([city])
+}
+
+model ProgrammeDay {
+  id          String    @id @default(cuid())
+  programmeId String
+  programme   Programme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+  date        DateTime
+  label       String
+  sortOrder   Int
+  slots       MealSlot[]
+
+  @@unique([programmeId, date])
+  @@index([programmeId, sortOrder])
+}
+
+model MealSlot {
+  id             String       @id @default(cuid())
+  programmeDayId String
+  programmeDay   ProgrammeDay @relation(fields: [programmeDayId], references: [id], onDelete: Cascade)
+  /// BREAKFAST | LUNCH | DINNER
+  kind           String
+  label          String
+  serveAt        DateTime
+  orderCutoffAt  DateTime
+  sortOrder      Int
+  offerings      SlotOffering[]
+  batches        KitchenBatch[]
+
+  @@unique([programmeDayId, kind])
+  @@index([serveAt])
+}
+
+/// A sellable plate, side, or drink. Prices are integer kobo.
+model MenuItem {
+  id           String  @id @default(cuid())
+  slug         String  @unique
+  name         String
+  description  String
+  /// PLATE | SIDE | DRINK
+  category     String
+  priceKobo    Int
+  /// MILD | MEDIUM | HOT
+  spiceLevel   String  @default("MILD")
+  isVegetarian Boolean @default(false)
+  isActive     Boolean @default(true)
+  allergens    String  @default("")
+
+  offerings SlotOffering[]
+  batches   KitchenBatch[]
+}
+
+/// A menu item offered at one meal slot, with an optional price override and cap.
+model SlotOffering {
+  id                String   @id @default(cuid())
+  mealSlotId        String
+  mealSlot          MealSlot @relation(fields: [mealSlotId], references: [id], onDelete: Cascade)
+  menuItemId        String
+  menuItem          MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Restrict)
+  priceKoboOverride Int?
+  maxPortions       Int?
+  portionsSold      Int      @default(0)
+  isAvailable       Boolean  @default(true)
+
+  lines   OrderLine[]
+  batches KitchenBatch[]
+
+  @@unique([mealSlotId, menuItemId])
+}
+
+/// Where a packed meal is handed over inside the venue.
+model DropPoint {
+  id           String    @id @default(cuid())
+  programmeId  String
+  programme    Programme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+  name         String
+  instructions String    @default("")
+  sortOrder    Int
+  orders       Order[]
+
+  @@unique([programmeId, name])
+}
+
+/// One checkout. Lines can span several days of the same programme.
+model Order {
+  id               String     @id @default(cuid())
+  reference        String     @unique
+  userId           String?
+  user             User?      @relation("OrderCustomer", fields: [userId], references: [id], onDelete: SetNull)
+  programmeId      String
+  programme        Programme  @relation(fields: [programmeId], references: [id], onDelete: Restrict)
+  /// CART | PENDING_PAYMENT | PAID | CONFIRMED | PREPARING | READY | OUT_FOR_DELIVERY | DELIVERED | CANCELLED | REFUNDED
+  status           String     @default("CART")
+  /// SECTION_DROP | VENUE_PICKUP | OFFSITE
+  fulfilment       String     @default("SECTION_DROP")
+  dropPointId      String?
+  dropPoint        DropPoint? @relation(fields: [dropPointId], references: [id], onDelete: SetNull)
+  contactName      String
+  contactPhone     String
+  guestEmail       String?
+  notes            String     @default("")
+  addressLine      String?
+  area             String?
+  addressCity      String?
+  subtotalKobo     Int        @default(0)
+  serviceFeeKobo   Int        @default(0)
+  totalKobo        Int        @default(0)
+  cancellationNote String?
+  placedAt         DateTime?
+  paidAt           DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  lines    OrderLine[]
+  payment  Payment?
+  delivery Delivery?
+
+  @@index([programmeId, status])
+  @@index([userId])
+}
+
+/// Snapshot of a plate or add-on. parentLineId links a drink or side to a plate.
+model OrderLine {
+  id             String        @id @default(cuid())
+  orderId        String
+  order          Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  slotOfferingId String?
+  slotOffering   SlotOffering? @relation(fields: [slotOfferingId], references: [id], onDelete: SetNull)
+  parentLineId   String?
+  parentLine     OrderLine?    @relation("AddOns", fields: [parentLineId], references: [id], onDelete: Cascade)
+  addOns         OrderLine[]   @relation("AddOns")
+  itemName       String
+  slotLabel      String
+  serveAt        DateTime
+  quantity       Int
+  unitPriceKobo  Int
+  lineTotalKobo  Int
+  notes          String        @default("")
+
+  @@index([orderId])
+}
+
+model Payment {
+  id           String    @id @default(cuid())
+  orderId      String    @unique
+  order        Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  /// PAYSTACK | MANUAL
+  provider     String    @default("PAYSTACK")
+  /// PENDING | SUCCESS | FAILED | REFUNDED
+  status       String    @default("PENDING")
+  amountKobo   Int
+  currency     String    @default("NGN")
+  reference    String    @unique
+  channel      String?
+  paidAt       DateTime?
+  refundedKobo Int       @default(0)
+  rawPayload   String    @default("")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Delivery {
+  id          String    @id @default(cuid())
+  orderId     String    @unique
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  riderId     String?
+  rider       User?     @relation("DeliveryRider", fields: [riderId], references: [id], onDelete: SetNull)
+  /// UNASSIGNED | ASSIGNED | PICKED_UP | DELIVERED | FAILED
+  status      String    @default("UNASSIGNED")
+  assignedAt  DateTime?
+  pickedUpAt  DateTime?
+  deliveredAt DateTime?
+  proofNote   String    @default("")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+/// Production tally for one plate at one meal slot.
+model KitchenBatch {
+  id              String        @id @default(cuid())
+  mealSlotId      String
+  mealSlot        MealSlot      @relation(fields: [mealSlotId], references: [id], onDelete: Cascade)
+  menuItemId      String
+  menuItem        MenuItem      @relation(fields: [menuItemId], references: [id], onDelete: Restrict)
+  slotOfferingId  String?
+  slotOffering    SlotOffering? @relation(fields: [slotOfferingId], references: [id], onDelete: SetNull)
+  portionsPlanned Int           @default(0)
+  portionsPacked  Int           @default(0)
+  /// PLANNED | PREPPING | PACKED | HANDED_OFF
+  status          String        @default("PLANNED")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([mealSlotId, menuItemId])
+}
