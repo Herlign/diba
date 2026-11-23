@@ -32,6 +32,12 @@ export const metadata: Metadata = {
     type: "website",
     url: siteUrl,
   },
+  twitter: {
+    card: "summary",
+    title: "Diba Meals",
+    description:
+      "Meal pre-orders for multi-day church programmes in Lagos. Morning and evening, delivered where you sit.",
+  },
 }
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
