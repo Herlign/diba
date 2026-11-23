@@ -5,6 +5,7 @@ import { connection } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { formatDayLabel, formatLagosMoment, formatWindow } from "@/lib/dates"
 import {
+  cutoffInstant,
   deliveryStartFromKey,
   lagosDateKey,
   quoteTotals,
@@ -145,7 +146,7 @@ export async function quoteProgrammeCart(slug: string, rawCart: unknown): Promis
       dropped.push(`${formatDayLabel(slot.date)} ${slot.mealPeriod.name} is ${state === "sold_out" ? "sold out" : "closed"}.`)
     }
     if (lines.length === 0) continue
-    const cutoff = new Date(deliveryStart.getTime() - programme.orderCutoffHours * 60 * 60 * 1000)
+    const cutoff = cutoffInstant(deliveryStart, programme.orderCutoffHours)
     if (!earliest || cutoff < earliest) earliest = cutoff
     const group = groups.get(dateKey) ?? { dateKey, label: formatDayLabel(slot.date), periods: [] }
     group.periods.push({

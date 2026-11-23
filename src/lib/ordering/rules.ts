@@ -42,6 +42,11 @@ export function holdsCapacity(status: string, createdAt: Date, now: Date) {
   return false
 }
 
+/** Ordering closes this many hours before the delivery window starts. The window itself lives on the meal period. */
+export function cutoffInstant(deliveryStart: Date, cutoffHours: number) {
+  return new Date(deliveryStart.getTime() - cutoffHours * 60 * 60 * 1000)
+}
+
 export function slotAvailability(input: {
   programmeStatus: string
   isOpen: boolean
@@ -55,8 +60,7 @@ export function slotAvailability(input: {
   if (!input.hasMenu) return "not_served"
   if (input.programmeStatus !== "PUBLISHED") return "programme_closed"
   if (!input.isOpen) return "ordering_closed"
-  const cutoff = input.deliveryStart.getTime() - input.cutoffHours * 60 * 60 * 1000
-  if (!(input.now.getTime() < cutoff)) return "ordering_closed"
+  if (!(input.now.getTime() < cutoffInstant(input.deliveryStart, input.cutoffHours).getTime())) return "ordering_closed"
   if (input.capacity !== null && input.held >= input.capacity) return "sold_out"
   return "open"
 }

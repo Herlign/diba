@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { fromZonedTime } from "date-fns-tz"
 import {
+  cutoffInstant,
   holdsCapacity,
   planFromPrices,
   quoteTotals,
@@ -30,7 +31,8 @@ describe("slot availability", () => {
   })
 
   it("closes at the exact cutoff instant", () => {
-    const cutoff = new Date(morning.getTime() - 24 * 60 * 60 * 1000)
+    const cutoff = cutoffInstant(morning, 24)
+    expect(cutoff.toISOString()).toBe(new Date(morning.getTime() - 24 * 60 * 60 * 1000).toISOString())
     expect(
       slotAvailability({
         programmeStatus: "PUBLISHED",

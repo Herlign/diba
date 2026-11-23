@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Fraunces, Outfit } from "next/font/google"
 import { AnalyticsScripts } from "@/components/analytics/scripts"
 import { SiteChrome } from "@/components/layout/site-chrome"
+import { MARKETING } from "@/lib/catalogue"
 import "./globals.css"
 
 const outfit = Outfit({
@@ -22,12 +23,10 @@ export const metadata: Metadata = {
     default: "Diba Meals",
     template: "%s · Diba Meals",
   },
-  description:
-    "Your meals, sorted for the whole church programme. Pick your days, choose morning and evening plates, and we deliver them at the venue.",
+  description: `${MARKETING.headlineLead} ${MARKETING.headlineRest}. ${MARKETING.footer}`,
   openGraph: {
     title: "Diba Meals",
-    description:
-      "Meal pre-orders for multi-day church programmes in Lagos. Morning and evening, delivered where you sit.",
+    description: `${MARKETING.headlineLead} ${MARKETING.headlineRest}. Morning, afternoon and evening, delivered at the programme venue.`,
     locale: "en_NG",
     type: "website",
     url: siteUrl,
@@ -35,8 +34,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary",
     title: "Diba Meals",
-    description:
-      "Meal pre-orders for multi-day church programmes in Lagos. Morning and evening, delivered where you sit.",
+    description: `${MARKETING.headlineLead} ${MARKETING.headlineRest}. Morning, afternoon and evening, delivered at the programme venue.`,
   },
 }
 

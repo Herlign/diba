@@ -80,7 +80,7 @@ export function CheckoutExperience({ programme, sheet }: { programme: Programme;
           <p className="text-sm font-semibold tracking-wide text-palm uppercase">Checkout</p>
           <h1 className="mt-2 font-heading text-4xl">{programme.title}</h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-            The kitchen holds your seats for 30 minutes while you pay. Orders close {programme.cutoffHours} hours before each meal.
+            The kitchen holds your seats for 30 minutes while you pay. Orders close {programme.cutoffHours} hours before each slot.
           </p>
           {sheet ? <PaymentSheet sheet={sheet} paying={paying} setPaying={setPaying} /> : null}
           {!sheet && ready && !hasItems ? (
@@ -145,7 +145,7 @@ export function CheckoutExperience({ programme, sheet }: { programme: Programme;
               <label className="flex items-start gap-3 text-sm leading-6">
                 <input name="acceptedTerms" type="checkbox" className="mt-1 size-5 accent-palm" />
                 <span>
-                  I understand orders close {programme.cutoffHours} hours before each meal. A cancelled slot becomes a refund request for the church team. Nothing is refunded automatically.
+                  I understand orders close {programme.cutoffHours} hours before each slot. A cancelled slot becomes a refund request for the church team. Nothing is refunded automatically.
                 </span>
               </label>
               {error ? <p className="text-sm text-tomato" role="alert">{error}</p> : null}

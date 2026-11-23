@@ -11,7 +11,7 @@ export const metadata = {
     "Find a church programme by name or code and see where Diba Meals is delivering.",
   openGraph: {
     title: "Programmes · Diba Meals",
-    description: "Crossover conventions, retreats and camp meetings taking meal orders.",
+    description: "Camps, congresses and convocations taking meal orders.",
   },
 }
 
@@ -29,7 +29,7 @@ export default function ProgrammesPage({
             Find your programme
           </h1>
           <p className="mt-3 max-w-xl text-base leading-7 text-muted-foreground">
-            Search by church, programme name, or the code on the poster. Ordering for a meal closes 24 hours before it is delivered.
+            Search by church, programme name, or the code on the poster. Ordering closes 24 hours before each slot.
           </p>
         </div>
       </header>

@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma"
 import { formatDayLabel, formatLagosMoment } from "@/lib/dates"
-import { deliveryStartFromKey, lagosDateKey } from "@/lib/ordering/rules"
+import { cutoffInstant, deliveryStartFromKey, lagosDateKey } from "@/lib/ordering/rules"
 import { tokensMatch } from "@/lib/secret-match"
 import { rateLimit } from "@/lib/rate-limit"
 import { signMagicLink, verifyMagicLink } from "@/lib/magic/link"
@@ -80,7 +80,7 @@ export async function ordersForMagicLink(token: string) {
         .map((slot) => {
           const dateKey = lagosDateKey(slot.mealSlot.date)
           const start = deliveryStartFromKey(dateKey, slot.mealSlot.mealPeriod.deliveryWindowStart)
-          const cutoff = new Date(start.getTime() - order.programme.orderCutoffHours * 60 * 60 * 1000)
+          const cutoff = cutoffInstant(start, order.programme.orderCutoffHours)
           const cancellable =
             (order.status === "PAID" || order.status === "PARTIALLY_FULFILLED") &&
             slot.status === "SCHEDULED" &&
@@ -125,7 +125,7 @@ export async function requestSlotRefund(reference: string, accessToken: string, 
   }
   const dateKey = lagosDateKey(slot.mealSlot.date)
   const start = deliveryStartFromKey(dateKey, slot.mealSlot.mealPeriod.deliveryWindowStart)
-  const cutoff = new Date(start.getTime() - order.programme.orderCutoffHours * 60 * 60 * 1000)
+  const cutoff = cutoffInstant(start, order.programme.orderCutoffHours)
   if (!(new Date() < cutoff)) {
     return { ok: false as const, error: `Ordering for this slot closed on ${formatLagosMoment(cutoff)}.` }
   }

@@ -8,7 +8,8 @@
     "start": "next start --hostname 0.0.0.0 --port 4317",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run && tsx --test src/lib/money.test.ts src/lib/dates.test.ts src/lib/phone.test.ts src/lib/programme-query.test.ts",
+    "test": "vitest run && tsx --test src/lib/money.test.ts src/lib/dates.test.ts src/lib/phone.test.ts src/lib/programme-query.test.ts src/lib/catalogue.test.ts",
+    "content:update": "tsx scripts/update-content.ts",
     "test:e2e": "playwright test",
     "postinstall": "prisma generate"
   },
