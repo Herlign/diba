@@ -8,6 +8,7 @@ import {
   holdsCapacity,
   lagosDateKey,
   planFromPrices,
+  cutoffInstant,
   slotAvailability,
 } from "@/lib/ordering/rules"
 import type { OrderingItem, OrderingProgramme, OrderingSlot } from "@/lib/ordering/types"
@@ -90,16 +91,11 @@ export async function loadOrderingProgramme(slug: string): Promise<OrderingProgr
       periodName: slot.mealPeriod.name,
       windowStart: slot.mealPeriod.deliveryWindowStart,
       windowEnd: slot.mealPeriod.deliveryWindowEnd,
-      cutoffAt: deliveryStartFromKey(dateKey, slot.mealPeriod.deliveryWindowStart).toISOString(),
+      cutoffAt: cutoffInstant(deliveryStart, programme.orderCutoffHours).toISOString(),
       state,
       reason: REASON[state],
     }
   })
-  // cutoffAt above is delivery start; the displayed cutoff is delivery start minus hours.
-  for (const slot of slots) {
-    const start = new Date(slot.cutoffAt)
-    slot.cutoffAt = new Date(start.getTime() - programme.orderCutoffHours * 60 * 60 * 1000).toISOString()
-  }
 
   const menuMap = new Map<string, OrderingItem>()
   for (const offering of programme.menuItems) {

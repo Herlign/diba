@@ -23,7 +23,7 @@ npm run build
 npm start
 ```
 
-Ordering lives at `/p/<slug>` (for example `/p/crossover-convention-2026`) and a short code redirects from `/c/CROSS26`. Review is `/p/<slug>/review`, checkout is `/p/<slug>/checkout`, and a paid order opens at `/orders/<reference>?token=...`. My orders is `/my-orders`.
+Ordering lives at `/p/<slug>` (for example `/p/reboot-camp-2026`) and a short code redirects from `/c/REBOOT26`. Review is `/p/<slug>/review`, checkout is `/p/<slug>/checkout`, and a paid order opens at `/orders/<reference>?token=...`. My orders is `/my-orders`.
 
 `PAYMENTS_MODE=mock` reserves the seats and shows a "Mark as paid" step. No card is charged. Set `PAYMENTS_MODE=live` with `PAYSTACK_SECRET_KEY` and `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` to open Paystack Popup. The webhook is `https://<host>/api/paystack/webhook` (HMAC SHA512 of the raw body). For a local webhook, tunnel with ngrok and paste that HTTPS URL into the Paystack dashboard. Point Paystack at the test secret.
 
@@ -62,13 +62,19 @@ Paystack, Resend, Cloudinary or Supabase Storage, and Google Maps are listed in 
 
 ## Seeded programmes
 
-- **Grace Assembly Lagos** at Grace Camp Ground, Lekki-Epe Expressway, with three delivery points.
-- **Crossover Convention 2026** (`CROSS26`), 27–31 Dec 2026, Morning 07:00–09:00 and Evening 18:00–20:00, 24-hour cutoff, 300 seats a slot.
-- **Year-End Retreat** (`RETREAT26`), 18–20 Dec 2026, Morning only.
-- A draft, **Ministers' Preview** (`DRAFT26`), is stored and hidden from the public list.
-- About 20 menu items with variants, three meal plans on the crossover, and promo code `CROSS10`.
+Every programme serves the same menu. Morning is 07:00–10:00, afternoon is 13:00–15:00, and evening is 18:00–20:00, in Africa/Lagos. Ordering closes 24 hours before the window starts. A new slot is created with 300 seats. Extras are a normal menu category, available in every slot.
 
-Re-running the seed wipes and reloads these rows.
+- **Reboot Camp** (`REBOOT26`), 3–6 Dec 2026, National Stadium, Surulere, Lagos.
+- **RCCG Holy Ghost Congress 2026** (`HGC26`), 7–12 Dec 2026, Redemption City, KM 46 Lagos–Ibadan Expressway.
+- **The Feast 2026: The Torch** (`FEAST26`), 11–13 Dec 2026, The New Fusion Centre, Ogba, Ikeja. Hosted by The New Church.
+
+Re-running `npx prisma db seed` wipes orders, attendees, and staff, then reloads these rows. Do not seed a database that already has real orders. To refresh menu and programmes in place, use:
+
+```bash
+DATABASE_URL="postgresql://…" npm run content:update
+```
+
+That upserts the menu and these three programmes, archives any other programmes and menu items, and leaves staff accounts and orders alone.
 
 ## Staff logins (seed only, not for production)
 
@@ -87,7 +93,7 @@ Production target is Vercel, with Postgres on Neon or Supabase. Paystack, Resend
 1. Create a Postgres database. Copy its connection string into `DATABASE_URL`. It must include `?sslmode=require` on Neon and Supabase.
 2. Push this repo to GitHub and import it in Vercel. Framework preset: Next.js. Set the env vars below in the Vercel project before the first build.
 3. `NEXT_PUBLIC_SITE_URL` must be the real `https://` origin. Vercel bakes `NEXT_PUBLIC_*` at build time, so change it and redeploy if the domain moves.
-4. After the first successful deploy, run `npx prisma migrate deploy` against that database (Vercel does not run migrations for you) and then `npx prisma db seed` once. Do not seed production passwords into a public database. Create real staff from the admin invite form and then disable the seed accounts.
+4. After the first successful deploy, run `npx prisma migrate deploy` against that database (Vercel does not run migrations for you). The production build only runs `prisma migrate deploy && next build`, so it does not load menu or programmes. On an empty database, run `npx prisma db seed` once, then replace the seed staff from the admin invite form and disable those accounts. On a database that already has orders, do not seed again. Run `DATABASE_URL="postgresql://…" npm run content:update` instead. It upserts the current menu and programmes and archives the old demo rows without touching staff or orders.
 5. Paystack: create live keys. Set `PAYMENTS_MODE=live`, `PAYSTACK_SECRET_KEY`, and `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`. In the Paystack dashboard set the webhook to `https://<domain>/api/paystack/webhook`. Paystack signs the raw body with HMAC SHA512. The handler rejects a bad signature and applies a successful charge only once, and only when the amount in kobo and the currency are NGN matching the order.
 6. Resend: verify the sending domain, then set `RESEND_API_KEY` and `EMAIL_FROM` to an address on that domain, such as `Diba Meals <orders@yourdomain>`. With no key, mail is printed to the server log and the magic link is shown on the page.
 7. Cron: call `GET https://<domain>/api/cron/release-holds` every 10 minutes with header `Authorization: Bearer <CRON_SECRET>`. Vercel Cron can hit that path. It cancels `PENDING_PAYMENT` orders older than 30 minutes so the seat is free. The seat count already ignores those holds. The cron just closes the rows.

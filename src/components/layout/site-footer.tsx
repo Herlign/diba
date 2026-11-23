@@ -1,4 +1,5 @@
 import { Logo } from "@/components/layout/logo"
+import { MARKETING, ORDER_CUTOFF_HOURS } from "@/lib/catalogue"
 import { foodPhotos } from "@/lib/food-photos"
 
 export function SiteFooter() {
@@ -8,12 +9,10 @@ export function SiteFooter() {
         <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
           <div className="max-w-md space-y-3">
             <Logo />
-            <p className="text-sm leading-6 text-muted-foreground">
-              Cooked in Lagos and Ile-Ife. Packed with your name on it, and dropped at the church — not at a random junction.
-            </p>
+            <p className="text-sm leading-6 text-muted-foreground">{MARKETING.footer}</p>
           </div>
           <div className="text-sm text-muted-foreground">
-            <p>Orders close 24 hours before each meal.</p>
+            <p>Orders close {ORDER_CUTOFF_HOURS} hours before each slot.</p>
             <a href="/admin/login" className="link-fade mt-2 inline-flex h-11 items-center font-semibold text-palm">
               Staff
             </a>

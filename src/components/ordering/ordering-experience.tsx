@@ -260,6 +260,11 @@ export function OrderingExperience({ programme }: { programme: OrderingProgramme
         {categories.map((category) => (
           <div key={category} className="mt-6">
             <h2 className="font-heading text-2xl">{category}</h2>
+            {category === "Extras" ? (
+              <p className="mt-1 max-w-xl text-sm leading-6 text-muted-foreground">
+                Add-ons for any slot. Add one alongside a plate, or on its own.
+              </p>
+            ) : null}
             <div className="mt-3 grid gap-4 sm:grid-cols-2">
               {visibleMenu
                 .filter((item) => item.categoryName === category)
@@ -268,6 +273,10 @@ export function OrderingExperience({ programme }: { programme: OrderingProgramme
                   const chosen = offered.find((variant) => variant.id === variantChoice[item.id]) ?? offered[0]
                   if (!chosen) return null
                   const quantity = quantities[item.id] ?? 1
+                  const allHours =
+                    category !== "Extras" &&
+                    programme.periods.length > 0 &&
+                    programme.periods.every((period) => chosen.periodIds.includes(period.id))
                   const targets = programme.slots.filter(
                     (slot) => selected.includes(slot.id) && slot.state === "open" && chosen.periodIds.includes(slot.periodId),
                   )
@@ -278,6 +287,9 @@ export function OrderingExperience({ programme }: { programme: OrderingProgramme
                       </div>
                       <div className="space-y-3 p-4">
                         <h3 className="font-heading text-2xl">{item.name}</h3>
+                        {allHours ? (
+                          <p className="text-xs font-semibold tracking-wide text-palm uppercase">All hours</p>
+                        ) : null}
                         <p className="text-sm leading-6 text-muted-foreground">{item.description}</p>
                         {item.dietaryTags.length > 0 ? (
                           <ul className="flex flex-wrap gap-2">

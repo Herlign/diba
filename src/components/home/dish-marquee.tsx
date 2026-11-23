@@ -1,12 +1,12 @@
 const dishes = [
-  "Sweet plantain",
-  "Fried rice",
-  "Egusi stew",
-  "Grilled chicken",
-  "Peppered fish",
   "Party jollof",
-  "Pounded yam",
-  "Zobo",
+  "Ofada & ayamase",
+  "Suya rice",
+  "Moi-moi",
+  "Shawarma",
+  "Yamarita",
+  "Sweet plantain",
+  "Basmati rice",
 ]
 
 export function DishMarquee() {

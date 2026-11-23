@@ -1,5 +1,6 @@
 import "server-only"
 
+import { MAIN_MEAL_CATEGORY_SLUGS } from "@/lib/catalogue"
 import { ProgrammeStatus } from "@/lib/domain"
 import { prisma } from "@/lib/prisma"
 import { programmeListWhere, startingPriceKobo } from "@/lib/programme-query"
@@ -12,7 +13,7 @@ const programmeInclude = {
     where: {
       isActive: true,
       variant: {
-        menuItem: { category: { slug: { in: ["breakfast", "rice-dishes", "swallow"] } } },
+        menuItem: { category: { slug: { in: [...MAIN_MEAL_CATEGORY_SLUGS] } } },
       },
     },
     include: { variant: { select: { priceKobo: true } } },

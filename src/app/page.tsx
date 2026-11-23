@@ -7,35 +7,37 @@ import { Reveal } from "@/components/home/reveal"
 import { ProgrammeCard } from "@/components/programmes/programme-card"
 import { ProgrammeListSkeleton } from "@/components/programmes/programme-list"
 import { Search } from "lucide-react"
-import { egusi, friedRice, grilledChicken, grilledFish, jollof, plantain } from "@/lib/food-photos"
+import { MARKETING, ORDER_CUTOFF_HOURS, SERVICE_WINDOWS, serviceWindowSummary } from "@/lib/catalogue"
+import { formatClock } from "@/lib/dates"
+import { friedRice, grilledChicken, grilledFish, jollof, plantain, yamAndEgg } from "@/lib/food-photos"
 import { listUpcomingProgrammes } from "@/lib/programmes"
 
 const steps = [
   {
     number: "01",
     title: "Pick your days",
-    body: "Find the programme your church shared — by name, or by a code like CROSS26 — and tick the days you are actually staying.",
+    body: "Find the programme — by name, or by a code like REBOOT26 — and tick the days you are actually staying.",
   },
   {
     number: "02",
     title: "Choose meals",
-    body: "Morning, evening, or a plan that fills the week. Same breakfast every day is one tap. You can still change a slot.",
+    body: "Morning, afternoon, or evening. All-hours plates and extras can go in any slot. You can still change a slot.",
   },
   {
     number: "03",
     title: "We deliver at the venue",
-    body: "Your pack meets you at Gate A, the hostel, or children's church. No queue outside the camp.",
+    body: "Your meal is dropped at a designated point inside the programme venue.",
   },
 ]
 
 const faqs = [
   {
     q: "When does ordering close?",
-    a: "24 hours before that meal's delivery window starts. For a 7:00am breakfast, the list locks at 7:00am the day before.",
+    a: `Ordering closes ${ORDER_CUTOFF_HOURS} hours before that slot's delivery window starts. Morning (${SERVICE_WINDOWS[0].short}) locks at ${formatClock(SERVICE_WINDOWS[0].start)} the day before, afternoon (${SERVICE_WINDOWS[1].short}) at ${formatClock(SERVICE_WINDOWS[1].start)}, and evening (${SERVICE_WINDOWS[2].short}) at ${formatClock(SERVICE_WINDOWS[2].start)}.`,
   },
   {
     q: "Where do I collect?",
-    a: "At a delivery point inside the venue — the auditorium gate, a hostel block, or the children's hall. You choose it at checkout.",
+    a: "At a designated collection point inside the programme venue. You choose it at checkout.",
   },
   {
     q: "What about refunds?",
@@ -48,18 +50,18 @@ const faqs = [
 ]
 
 const plates = [
-  { photo: plantain, name: "Sweet plantain", note: "Fried while the sermon is still going." },
-  { photo: friedRice, name: "Fried rice & pepper", note: "The one people hide under their chair." },
-  { photo: egusi, name: "Egusi stew", note: "Saturday swallow, not a polite spoonful." },
-  { photo: grilledChicken, name: "Grilled chicken", note: "Charred skin, lean meat, no bone argument." },
-  { photo: grilledFish, name: "Peppered fish", note: "For the people who don't do red meat." },
-  { photo: jollof, name: "Party jollof", note: "Smoky, and it still tastes like a party in the pack." },
+  { photo: jollof, name: "Diba Party Jollof & Chicken", note: "All hours · ₦5,000" },
+  { photo: yamAndEgg, name: "Boiled yam & egg sauce", note: "With tea or coffee · all hours" },
+  { photo: friedRice, name: "Basmati rice & Chicken Delish", note: "All hours · ₦6,500" },
+  { photo: grilledChicken, name: "Peppered chicken", note: "An extra for any slot · ₦3,000" },
+  { photo: grilledFish, name: "Hake fish", note: "An extra for any slot · ₦2,500" },
+  { photo: plantain, name: "Sweet plantain", note: "An extra for any slot · ₦1,000" },
 ]
 
 const slip = [
-  { when: "Friday dinner", plate: "Party jollof" },
-  { when: "Saturday lunch", plate: "Pounded yam & egusi" },
-  { when: "Sunday lunch", plate: "Ofada & ayamase" },
+  { when: "Thu breakfast", plate: "Oats & moi-moi" },
+  { when: "Fri lunch", plate: "Party jollof" },
+  { when: "Sat dinner", plate: "Suya rice" },
 ]
 
 export default function HomePage() {
@@ -68,15 +70,12 @@ export default function HomePage() {
       <section className="bg-white text-ink">
         <div className="mx-auto grid w-full max-w-6xl items-center gap-8 px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-12 lg:py-16">
           <div className="rise">
-            <p className="text-sm font-semibold tracking-wide text-palm uppercase">
-              Lagos & Ile-Ife kitchens · church programmes
-            </p>
+            <p className="text-sm font-semibold tracking-wide text-palm uppercase">{MARKETING.eyebrow}</p>
             <h1 className="mt-3 max-w-xl font-heading text-4xl leading-[0.98] text-balance sm:text-6xl">
-              Your meals, sorted for the <span className="bg-gold px-1 text-ink">whole programme</span>.
+              {MARKETING.headlineLead}{" "}
+              <span className="bg-gold px-1 text-ink">{MARKETING.headlineRest}</span>
             </h1>
-            <p className="mt-5 max-w-lg text-base leading-7 text-muted-foreground sm:text-lg">
-              Conventions, crossovers, retreats. Pick your days, choose morning and evening plates, and we bring them to your block. No queue on the expressway.
-            </p>
+            <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">{MARKETING.hero}</p>
             <form action="/programmes" method="get" className="mt-7 flex max-w-lg flex-col gap-2 sm:flex-row">
               <label className="sr-only" htmlFor="find-programme">
                 Find your programme
@@ -97,9 +96,9 @@ export default function HomePage() {
                 Search
               </button>
             </form>
-            <ul className="mt-6 flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:gap-5">
-              <li>Cutoff is 24 hours before</li>
-              <li>Morning 7–9am · Evening 6–8pm</li>
+            <ul className="mt-6 flex flex-col gap-2 text-sm text-muted-foreground sm:flex-row sm:flex-wrap sm:gap-x-5 sm:gap-y-2">
+              <li>Cutoff is {ORDER_CUTOFF_HOURS} hours before</li>
+              <li>{serviceWindowSummary()}</li>
               <li>Delivered at the venue</li>
             </ul>
           </div>
@@ -108,7 +107,7 @@ export default function HomePage() {
               <FoodImage photo={jollof} priority />
             </div>
             <div className="absolute -bottom-4 left-3 right-3 rounded-xl bg-gold p-3 text-ink shadow-[0_10px_24px_-16px_rgba(26,18,12,0.45)] sm:right-auto sm:left-4 sm:max-w-xs sm:p-4">
-              <p className="text-xs font-semibold tracking-wide uppercase">Greater Light · Ikeja</p>
+              <p className="text-xs font-semibold tracking-wide uppercase">Reboot Camp · Surulere</p>
               <ul className="mt-2 space-y-1 text-sm font-medium">
                 {slip.map((row) => (
                   <li key={row.when} className="flex justify-between gap-4">
@@ -141,11 +140,9 @@ export default function HomePage() {
       <section className="bg-white text-ink">
         <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:py-16">
           <Reveal>
-            <h2 className="max-w-xl font-heading text-4xl leading-tight text-ink sm:text-5xl">
-              What the kitchen is actually proud of
-            </h2>
+            <h2 className="max-w-xl font-heading text-4xl leading-tight text-ink sm:text-5xl">Freshly prepared</h2>
             <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground">
-              Complete plates. Not a scoop-and-pray buffet, and not rice that went cold while the choir did the third chorus.
+              Choose a slot, choose a plate, and collect it at a designated point inside the venue. Extras can be added to any slot.
             </p>
           </Reveal>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

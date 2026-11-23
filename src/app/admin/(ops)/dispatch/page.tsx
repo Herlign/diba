@@ -45,7 +45,7 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
         <label className="sr-only" htmlFor="order-ref">
           Order reference
         </label>
-        <input id="order-ref" name="ref" defaultValue={ref} placeholder="DM-CROSS26-00001" className="h-12 flex-1 rounded-lg border border-border bg-white px-3" />
+        <input id="order-ref" name="ref" defaultValue={ref} placeholder="DM-REBOOT26-00001" className="h-12 flex-1 rounded-lg border border-border bg-white px-3" />
         <button type="submit" className="h-12 rounded-lg bg-palm px-4 text-sm font-semibold text-cream">
           Look up reference
         </button>

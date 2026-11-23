@@ -14,7 +14,7 @@ export default async function ProgrammeOg({ params }: { params: Promise<{ slug: 
   const church = programme?.churchName ?? "Church programmes"
   const dates = programme?.dateKeys.length
     ? `${pretty(programme.dateKeys[0]!)} – ${pretty(programme.dateKeys.at(-1)!)}`
-    : "Morning and evening plates"
+    : "Morning, afternoon and evening"
   const wordmark = await readFile(join(process.cwd(), "public/brand/diba-wordmark.png"))
   return new ImageResponse(
     <div
@@ -53,7 +53,7 @@ export default async function ProgrammeOg({ params }: { params: Promise<{ slug: 
           borderRadius: 14,
         }}
       >
-        Order the plates. We bring them to your block.
+        Never miss a meal. We deliver at the venue.
       </div>
     </div>,
     { ...size },
