@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { Logo } from "@/components/layout/logo"
 import { can, type OpsSection, type StaffRoleName } from "@/lib/auth/access"
 import { logoutAction } from "@/lib/auth/actions"
 
@@ -25,9 +26,7 @@ export function OpsNav({ role, name }: { role: StaffRoleName; name: string }) {
   return (
     <header className="ops-chrome sticky top-0 z-40 border-b border-border bg-white">
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6">
-        <Link href="/admin" className="font-heading text-xl text-ink">
-          Diba ops
-        </Link>
+        <Logo href="/admin" priority className="h-10 w-auto" />
         <nav className="flex flex-1 flex-wrap gap-1" aria-label="Operations">
           {links.map((link) => {
             const active = path === link.href

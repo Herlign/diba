@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises"
+import { join } from "node:path"
 import { ImageResponse } from "next/og"
 import { loadOrderingProgramme } from "@/lib/ordering/load-programme"
 
@@ -13,6 +15,7 @@ export default async function ProgrammeOg({ params }: { params: Promise<{ slug: 
   const dates = programme?.dateKeys.length
     ? `${pretty(programme.dateKeys[0]!)} – ${pretty(programme.dateKeys.at(-1)!)}`
     : "Morning and evening plates"
+  const wordmark = await readFile(join(process.cwd(), "public/brand/diba-wordmark.png"))
   return new ImageResponse(
     <div
       style={{
@@ -26,7 +29,14 @@ export default async function ProgrammeOg({ params }: { params: Promise<{ slug: 
         justifyContent: "space-between",
       }}
     >
-      <div style={{ display: "flex", color: "#0e7a45", fontSize: 28, fontWeight: 700 }}>Diba Meals</div>
+      <div style={{ display: "flex" }}>
+        <img
+          src={`data:image/png;base64,${wordmark.toString("base64")}`}
+          alt="Diba Meals"
+          width={96}
+          height={105}
+        />
+      </div>
       <div style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", fontSize: 72, lineHeight: 1.05, letterSpacing: -1 }}>{title}</div>
         <div style={{ display: "flex", marginTop: 18, fontSize: 32, color: "#5c5348" }}>{church}</div>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { Logo } from "@/components/layout/logo"
 import { loginAction } from "@/lib/auth/actions"
 
 export const instant = false
@@ -16,7 +17,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <div className="bg-white text-ink">
       <form action={loginAction} className="rise mx-auto max-w-md px-4 py-16">
-        <p className="text-sm font-semibold tracking-wide text-palm uppercase">Staff</p>
+        <Logo priority className="h-16 w-auto" />
+        <p className="mt-8 text-sm font-semibold tracking-wide text-palm uppercase">Staff</p>
         <h1 className="mt-2 font-heading text-4xl">Sign in to the kitchen</h1>
         <p className="mt-3 text-sm text-muted-foreground">Use the staff email from the README. Attendees do not sign in here.</p>
         <label className="mt-6 block text-sm font-medium">
