@@ -64,7 +64,7 @@ async function main() {
       },
     })
   }
-  // Portion prices, including Hake fish Regular and Large, come from the catalogue sync.
+  // Portion prices, including party jollof and Hake fish, come from the catalogue sync.
   const summary = await syncCatalogue(prisma)
   console.log("Seeded staff and the December 2026 programmes. This wipe is for empty databases only.")
   console.log(JSON.stringify(summary, null, 2))

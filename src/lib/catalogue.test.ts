@@ -58,7 +58,7 @@ test("prices match the client menu in kobo", () => {
   assert.equal(price("boiled-white-rice-plantain-beef"), 345_000)
   assert.equal(price("beans-plantain-eja-kika"), 420_000)
   assert.equal(price("rice-beans-plantain"), 450_000)
-  assert.equal(price("diba-party-jollof-chicken"), 500_000)
+  assert.equal(price("diba-party-jollof-chicken"), 385_000)
   assert.equal(price("white-rice-ayamase"), 455_000)
   assert.equal(price("stir-fry-pasta-turkey"), 600_000)
   assert.equal(price("suya-rice-peppered-chicken"), 500_000)
@@ -105,12 +105,15 @@ test("plates without a size list stay on one regular price", () => {
   assert.deepEqual(portionsFor(oats), [{ name: "Regular", priceKobo: 300_000, position: 0 }])
 })
 
-test("jollof sizes are not applied because no plain jollof rice item exists", () => {
+test("party jollof is the jollof plate, with regular and large portions", () => {
   const jollof = MENU_ITEMS.filter((item) => /jollof/i.test(item.name))
   assert.deepEqual(
     jollof.map((item) => item.name),
     ["Diba Party Jollof & Chicken"],
   )
-  assert.equal(jollof[0]?.variants, undefined)
-  assert.equal(jollof[0]?.priceKobo, 500_000)
+  assert.deepEqual(portionsFor(jollof[0]!), [
+    { name: "Regular", priceKobo: 385_000, position: 0 },
+    { name: "Large", priceKobo: 500_000, position: 1 },
+  ])
+  assert.deepEqual(periodsFor(jollof[0]!), ["Morning", "Afternoon", "Evening"])
 })

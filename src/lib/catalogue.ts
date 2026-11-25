@@ -170,8 +170,11 @@ export const MENU_ITEMS: CatalogueItem[] = [
     imageUrl: "/images/jollof.jpg",
     category: "lunch",
     tags: [],
-    // No catalogue row is named "Jollof rice", so the ₦3,850 / ₦5,000 sizes are not applied here.
-    priceKobo: kobo(5000),
+    priceKobo: kobo(3850),
+    variants: [
+      { name: "Regular", priceKobo: kobo(3850), position: 0 },
+      { name: "Large", priceKobo: kobo(5000), position: 1 },
+    ],
     availability: "all",
   },
   {

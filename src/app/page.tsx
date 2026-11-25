@@ -50,7 +50,7 @@ const faqs = [
 ]
 
 const plates = [
-  { photo: jollof, name: "Diba Party Jollof & Chicken", note: "All hours · ₦5,000" },
+  { photo: jollof, name: "Diba Party Jollof & Chicken", note: "All hours · from ₦3,850" },
   { photo: yamAndEgg, name: "Boiled yam & egg sauce", note: "With tea or coffee · all hours" },
   { photo: friedRice, name: "Basmati rice & Chicken Delish", note: "All hours · ₦6,500" },
   { photo: grilledChicken, name: "Peppered chicken", note: "An extra for any slot · ₦3,000" },
