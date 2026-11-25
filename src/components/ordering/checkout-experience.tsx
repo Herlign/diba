@@ -6,6 +6,7 @@ import { useEffect, useState } from "react"
 import { useCart, useCartHydrated } from "@/lib/cart/store"
 import { formatNaira } from "@/lib/money"
 import { confirmMockPayment, placeOrder, verifyPayment } from "@/lib/checkout/actions"
+import { quoteProgrammeCart, type CartQuote } from "@/lib/ordering/quote"
 import { track } from "@/lib/analytics"
 
 type DeliveryPoint = { id: string; name: string; description: string }
@@ -35,6 +36,7 @@ export function CheckoutExperience({ programme, sheet }: { programme: Programme;
   const [error, setError] = useState("")
   const [pending, setPending] = useState(false)
   const [paying, setPaying] = useState(false)
+  const [quote, setQuote] = useState<CartQuote | null>(null)
 
   const payload = {
     planId: cart?.planId ?? null,
@@ -44,6 +46,26 @@ export function CheckoutExperience({ programme, sheet }: { programme: Programme;
   useEffect(() => {
     if (ready && hasItems && !sheet) track("begin_checkout", { slug: programme.slug })
   }, [ready, hasItems, sheet, programme.slug])
+
+  useEffect(() => {
+    if (!ready || sheet) return
+    const nextPayload = {
+      planId: cart?.planId ?? null,
+      slots: Object.entries(cart?.items ?? {}).map(([mealSlotId, items]) => ({ mealSlotId, items })),
+    }
+    if (!nextPayload.slots.some((slot) => slot.items.length > 0)) return
+    let cancelled = false
+    quoteProgrammeCart(programme.slug, nextPayload)
+      .then((next) => {
+        if (!cancelled) setQuote(next)
+      })
+      .catch(() => {
+        if (!cancelled) setQuote(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [ready, sheet, programme.slug, cart])
 
   async function submit(formData: FormData) {
     setError("")
@@ -158,6 +180,24 @@ export function CheckoutExperience({ programme, sheet }: { programme: Programme;
         </div>
         <aside className="h-fit rounded-2xl bg-[#f7f6f3] p-5 text-sm">
           <p className="font-heading text-2xl">Before you pay</p>
+          {hasItems && quote && quote.groups.length > 0 ? (
+            <ul className="mt-4 space-y-3 border-b border-border pb-4">
+              {quote.groups.flatMap((group) =>
+                group.periods.flatMap((period) =>
+                  period.lines.map((line) => (
+                    <li key={`${period.mealSlotId}-${line.variantId}`}>
+                      <p className="font-medium text-ink">
+                        {line.quantity}× {line.itemName}
+                      </p>
+                      <p className="text-muted-foreground">
+                        {line.variantLabel} · {group.label} {period.periodName} · {formatNaira(line.lineTotalKobo)}
+                      </p>
+                    </li>
+                  )),
+                ),
+              )}
+            </ul>
+          ) : null}
           <ul className="mt-3 space-y-2 text-muted-foreground">
             <li>Prices are read from the menu again at this step.</li>
             <li>A pending payment holds the seat for 30 minutes.</li>

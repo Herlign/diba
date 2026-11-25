@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma"
 import { formatDayLabel, formatLagosMoment } from "@/lib/dates"
 import { cutoffInstant, deliveryStartFromKey, lagosDateKey } from "@/lib/ordering/rules"
+import { formatOrderLine } from "@/lib/ordering/line-label"
 import { tokensMatch } from "@/lib/secret-match"
 import { rateLimit } from "@/lib/rate-limit"
 import { signMagicLink, verifyMagicLink } from "@/lib/magic/link"
@@ -93,7 +94,7 @@ export async function ordersForMagicLink(token: string) {
             refundRequested: slot.refundRequests.length > 0,
             cancellable,
             closedLabel: formatLagosMoment(cutoff),
-            items: slot.items.map((item) => `${item.quantity}× ${item.nameSnapshot}`),
+            items: slot.items.map((item) => formatOrderLine(item)),
           }
         })
         .sort((a, b) => a.label.localeCompare(b.label)),

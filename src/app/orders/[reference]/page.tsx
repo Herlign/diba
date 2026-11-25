@@ -6,6 +6,7 @@ import { PassActions } from "@/components/ordering/pass-actions"
 import { prisma } from "@/lib/prisma"
 import { formatDayLabel, formatWindow } from "@/lib/dates"
 import { formatNaira } from "@/lib/money"
+import { formatOrderLine } from "@/lib/ordering/line-label"
 import { tokensMatch } from "@/lib/secret-match"
 import { siteUrl } from "@/lib/site"
 import { TrackPurchase } from "@/components/analytics/track-purchase"
@@ -112,7 +113,7 @@ export default async function OrderConfirmationPage({
               <ul className="mt-3 text-sm">
                 {slot.items.map((item) => (
                   <li key={item.id}>
-                    {item.quantity}× {item.nameSnapshot}
+                    {formatOrderLine(item)}
                   </li>
                 ))}
               </ul>

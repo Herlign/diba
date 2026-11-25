@@ -3,6 +3,7 @@ import { getStaff } from "@/lib/auth/session"
 import { can } from "@/lib/auth/access"
 import { csvRow } from "@/lib/admin/csv"
 import { prepSheet } from "@/lib/kitchen/prep"
+import { orderLineLabel } from "@/lib/ordering/line-label"
 import { formatDayLabel } from "@/lib/dates"
 
 const PAID = ["PAID", "PARTIALLY_FULFILLED", "FULFILLED"] as const
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
       slotStatus: row.status,
       attendee: row.order.attendee.fullName,
       notes: row.order.dietaryNotes,
-      items: row.items.map((item) => ({ name: item.nameSnapshot, quantity: item.quantity })),
+      items: row.items.map((item) => ({ name: orderLineLabel(item), quantity: item.quantity })),
     })),
   )
   const lines = [

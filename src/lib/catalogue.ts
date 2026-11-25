@@ -6,6 +6,9 @@ export const DEFAULT_SLOT_CAPACITY = 300
 
 export const VARIANT_NAME = "Regular"
 
+/** Suggested portion labels. Saved as variant names, so staff can rename them. */
+export const SUGGESTED_PORTION_LABELS = ["Regular", "Large"] as const
+
 /** Africa/Lagos windows. Breakfast is morning, lunch is afternoon, dinner is evening. */
 export const SERVICE_WINDOWS = [
   { key: "morning", name: "Morning", start: "07:00", end: "10:00", short: "7–10am", position: 0 },
@@ -41,6 +44,12 @@ export function serviceWindowSummary() {
 
 type Availability = WindowKey | "all"
 
+export type CatalogueVariant = {
+  name: string
+  priceKobo: number
+  position?: number
+}
+
 export type CatalogueItem = {
   slug: string
   name: string
@@ -48,8 +57,29 @@ export type CatalogueItem = {
   imageUrl: string
   category: MenuCategorySlug
   tags: string[]
+  /** Single-portion price. With `variants`, this is the Regular / from price. */
   priceKobo: number
+  /** Omitted means one portion named Regular at priceKobo. */
+  variants?: CatalogueVariant[]
   availability: Availability
+}
+
+export type CataloguePortion = {
+  name: string
+  priceKobo: number
+  position: number
+}
+
+/** One Regular portion when an item has no size list. */
+export function portionsFor(item: CatalogueItem): CataloguePortion[] {
+  if (!item.variants || item.variants.length === 0) {
+    return [{ name: VARIANT_NAME, priceKobo: item.priceKobo, position: 0 }]
+  }
+  return item.variants.map((variant, index) => ({
+    name: variant.name,
+    priceKobo: variant.priceKobo,
+    position: variant.position ?? index,
+  }))
 }
 
 function kobo(naira: number) {
@@ -140,7 +170,11 @@ export const MENU_ITEMS: CatalogueItem[] = [
     imageUrl: "/images/jollof.jpg",
     category: "lunch",
     tags: [],
-    priceKobo: kobo(5000),
+    priceKobo: kobo(3850),
+    variants: [
+      { name: "Regular", priceKobo: kobo(3850), position: 0 },
+      { name: "Large", priceKobo: kobo(5000), position: 1 },
+    ],
     availability: "all",
   },
   {
@@ -220,7 +254,11 @@ export const MENU_ITEMS: CatalogueItem[] = [
     imageUrl: "/images/grilled-fish.jpg",
     category: "extras",
     tags: [],
-    priceKobo: kobo(2500),
+    priceKobo: kobo(1500),
+    variants: [
+      { name: "Regular", priceKobo: kobo(1500), position: 0 },
+      { name: "Large", priceKobo: kobo(2500), position: 1 },
+    ],
     availability: "all",
   },
   {

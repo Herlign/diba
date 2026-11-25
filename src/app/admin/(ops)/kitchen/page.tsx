@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { formatDayLabel } from "@/lib/dates"
 import { requireSection } from "@/lib/admin/require"
 import { prepSheet } from "@/lib/kitchen/prep"
+import { orderLineLabel } from "@/lib/ordering/line-label"
 import { PrintButton } from "@/components/admin/print-button"
 
 export const metadata = { title: "Kitchen sheet" }
@@ -30,7 +31,7 @@ export default async function KitchenPage({ searchParams }: { searchParams: Prom
       slotStatus: row.status,
       attendee: row.order.attendee.fullName,
       notes: row.order.dietaryNotes,
-      items: row.items.map((item) => ({ name: item.nameSnapshot, quantity: item.quantity })),
+      items: row.items.map((item) => ({ name: orderLineLabel(item), quantity: item.quantity })),
     })),
   )
   return (

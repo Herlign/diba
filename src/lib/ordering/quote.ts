@@ -35,6 +35,8 @@ const cartSchema = z.object({
 
 export type QuoteLine = {
   variantId: string
+  itemName: string
+  variantLabel: string
   name: string
   quantity: number
   unitPriceKobo: number
@@ -136,6 +138,8 @@ export async function quoteProgrammeCart(slug: string, rawCart: unknown): Promis
         const unitPriceKobo = offering.priceKoboOverride ?? offering.variant.priceKobo
         lines.push({
           variantId: item.variantId,
+          itemName: offering.variant.menuItem.name,
+          variantLabel: offering.variant.name,
           name: `${offering.variant.menuItem.name} · ${offering.variant.name}`,
           quantity: item.quantity,
           unitPriceKobo,

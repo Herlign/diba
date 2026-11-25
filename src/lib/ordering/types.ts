@@ -16,6 +16,7 @@ export type OrderingVariant = {
   name: string
   priceKobo: number
   servesCount: number
+  position: number
   periodIds: string[]
 }
 

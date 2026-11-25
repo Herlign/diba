@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { formatNaira } from "@/lib/money"
+import { formatOrderLine } from "@/lib/ordering/line-label"
 import { formatDayLabel, formatWindow } from "@/lib/dates"
 import { requireSection } from "@/lib/admin/require"
 import { setOrderStatus } from "@/lib/admin/mutations"
@@ -45,7 +46,7 @@ export default async function OrderAdminPage({ params }: { params: Promise<{ ref
             <ul>
               {slot.items.map((item) => (
                 <li key={item.id}>
-                  {item.quantity}× {item.nameSnapshot}
+                  {formatOrderLine(item)}
                 </li>
               ))}
             </ul>

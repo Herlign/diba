@@ -8,6 +8,7 @@ import { getStaff } from "@/lib/auth/session"
 import { rateLimit } from "@/lib/rate-limit"
 import { assessRedemption } from "@/lib/passes/redeem"
 import { lagosDateKey } from "@/lib/ordering/rules"
+import { formatOrderLine } from "@/lib/ordering/line-label"
 import { verifyPassToken } from "@/lib/passes/token"
 
 async function allow(section: "catalogue" | "orders" | "dispatch") {
@@ -44,14 +45,107 @@ export async function updateSlot(formData: FormData) {
 export async function updateVariant(formData: FormData) {
   if (!(await allow("catalogue"))) return
   const id = String(formData.get("id") ?? "")
+  const name = String(formData.get("name") ?? "").trim()
   const naira = Number(formData.get("naira") ?? 0)
+  const position = Number(formData.get("position") ?? 0)
+  if (name.length < 1 || name.length > 40 || !Number.isFinite(naira)) return
+  const current = await prisma.menuItemVariant.findUnique({ where: { id } })
+  if (!current) return
+  const clash = await prisma.menuItemVariant.findFirst({
+    where: { menuItemId: current.menuItemId, name, NOT: { id } },
+  })
+  if (clash) return
+  const isAvailable = formData.get("isAvailable") === "on"
   await prisma.menuItemVariant.update({
     where: { id },
     data: {
+      name,
+      position: Number.isFinite(position) ? Math.max(0, Math.round(position)) : current.position,
       priceKobo: Math.max(0, Math.round(naira * 100)),
-      isAvailable: formData.get("isAvailable") === "on",
+      isAvailable,
     },
   })
+  await prisma.programmeMenuItem.updateMany({
+    where: { variantId: id },
+    data: { isActive: isAvailable },
+  })
+  revalidatePath("/admin/menu")
+}
+
+export async function createVariant(formData: FormData) {
+  if (!(await allow("catalogue"))) return
+  const menuItemId = String(formData.get("menuItemId") ?? "")
+  const name = String(formData.get("name") ?? "").trim()
+  const naira = Number(formData.get("naira") ?? 0)
+  if (!menuItemId || name.length < 1 || name.length > 40 || !Number.isFinite(naira)) return
+  const item = await prisma.menuItem.findUnique({
+    where: { id: menuItemId },
+    include: {
+      variants: {
+        orderBy: { position: "asc" },
+        include: { offerings: { include: { periods: true } } },
+      },
+    },
+  })
+  if (!item) return
+  const variant = await prisma.menuItemVariant.upsert({
+    where: { menuItemId_name: { menuItemId, name } },
+    create: {
+      menuItemId,
+      name,
+      priceKobo: Math.max(0, Math.round(naira * 100)),
+      position: item.variants.length,
+      isAvailable: true,
+    },
+    update: {
+      priceKobo: Math.max(0, Math.round(naira * 100)),
+      isAvailable: true,
+    },
+  })
+  const sibling = item.variants.find((entry) => entry.id !== variant.id) ?? item.variants[0]
+  if (sibling) {
+    for (const offering of sibling.offerings) {
+      const saved = await prisma.programmeMenuItem.upsert({
+        where: { programmeId_variantId: { programmeId: offering.programmeId, variantId: variant.id } },
+        create: { programmeId: offering.programmeId, variantId: variant.id, isActive: true },
+        update: { isActive: true },
+      })
+      for (const period of offering.periods) {
+        await prisma.programmeMenuItemPeriod.upsert({
+          where: {
+            programmeMenuItemId_mealPeriodId: {
+              programmeMenuItemId: saved.id,
+              mealPeriodId: period.mealPeriodId,
+            },
+          },
+          create: { programmeMenuItemId: saved.id, mealPeriodId: period.mealPeriodId },
+          update: {},
+        })
+      }
+    }
+  }
+  revalidatePath("/admin/menu")
+}
+
+export async function removeVariant(formData: FormData) {
+  if (!(await allow("catalogue"))) return
+  const id = String(formData.get("id") ?? "")
+  const variant = await prisma.menuItemVariant.findUnique({
+    where: { id },
+    include: { _count: { select: { orderItems: true } } },
+  })
+  if (!variant) return
+  const siblings = await prisma.menuItemVariant.count({ where: { menuItemId: variant.menuItemId } })
+  if (siblings <= 1) return
+  if (variant._count.orderItems > 0) {
+    await prisma.menuItemVariant.update({ where: { id }, data: { isAvailable: false } })
+    await prisma.programmeMenuItem.updateMany({ where: { variantId: id }, data: { isActive: false } })
+  } else {
+    await prisma.programmeMenuItemPeriod.deleteMany({ where: { programmeMenuItem: { variantId: id } } })
+    await prisma.programmeMenuItem.deleteMany({ where: { variantId: id } })
+    await prisma.mealPlan.updateMany({ where: { defaultVariantId: id }, data: { defaultVariantId: null } })
+    await prisma.menuItemVariant.delete({ where: { id } })
+  }
   revalidatePath("/admin/menu")
 }
 
@@ -262,7 +356,7 @@ export async function redeemPass(token: string) {
   if (!decision.ok) return decision
   const delivered = await deliver(row!.id, staff.id)
   if (!delivered) return { ok: false as const, reason: "This pass was already used." }
-  const detail = delivered.items.map((item) => `${item.quantity}× ${item.nameSnapshot}`).join(", ")
+  const detail = delivered.items.map((item) => formatOrderLine(item)).join(", ")
   return {
     ok: true as const,
     headline: `Deliver: ${detail}`,

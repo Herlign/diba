@@ -169,6 +169,7 @@ export async function createPendingOrder(raw: PlaceOrderInput): Promise<PlacedOr
             lines.push({
               variantId: item.variantId,
               nameSnapshot: `${offering.variant.menuItem.name} · ${offering.variant.name}`,
+              variantLabelSnapshot: offering.variant.name,
               quantity: item.quantity,
               unitPriceKobo: offering.priceKoboOverride ?? offering.variant.priceKobo,
             })
@@ -237,6 +238,7 @@ export async function createPendingOrder(raw: PlaceOrderInput): Promise<PlacedOr
                     quantity: line.quantity,
                     unitPriceKobo: line.unitPriceKobo,
                     nameSnapshot: line.nameSnapshot,
+                    variantLabelSnapshot: line.variantLabelSnapshot,
                   })),
                 },
               })),

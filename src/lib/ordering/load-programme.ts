@@ -116,12 +116,13 @@ export async function loadOrderingProgramme(slug: string): Promise<OrderingProgr
       name: offering.variant.name,
       priceKobo: offering.priceKoboOverride ?? offering.variant.priceKobo,
       servesCount: offering.variant.servesCount,
+      position: offering.variant.position,
       periodIds: offering.periods.map((period) => period.mealPeriodId),
     })
     menuMap.set(item.id, current)
   }
   const menu = [...menuMap.values()].sort((a, b) => a.categoryPosition - b.categoryPosition || a.position - b.position)
-  for (const item of menu) item.variants.sort((a, b) => a.priceKobo - b.priceKobo)
+  for (const item of menu) item.variants.sort((a, b) => a.position - b.position || a.priceKobo - b.priceKobo)
 
   const dateKeys = [...new Set(slots.map((slot) => slot.dateKey))]
   const minByPeriod: Record<string, number> = {}

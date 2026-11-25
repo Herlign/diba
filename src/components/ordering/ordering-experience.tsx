@@ -291,6 +291,11 @@ export function OrderingExperience({ programme }: { programme: OrderingProgramme
                           <p className="text-xs font-semibold tracking-wide text-palm uppercase">All hours</p>
                         ) : null}
                         <p className="text-sm leading-6 text-muted-foreground">{item.description}</p>
+                        <p className="font-heading text-2xl text-palm">
+                          {offered.length > 1
+                            ? `From ${formatNaira(Math.min(...offered.map((variant) => variant.priceKobo)))}`
+                            : formatNaira(chosen.priceKobo)}
+                        </p>
                         {item.dietaryTags.length > 0 ? (
                           <ul className="flex flex-wrap gap-2">
                             {item.dietaryTags.map((tag) => (
@@ -300,21 +305,40 @@ export function OrderingExperience({ programme }: { programme: OrderingProgramme
                             ))}
                           </ul>
                         ) : null}
-                        <label className="block text-sm font-medium">
-                          Size
-                          <select
-                            value={chosen.id}
-                            onChange={(event) => setVariantChoice((current) => ({ ...current, [item.id]: event.target.value }))}
-                            className="mt-1 h-11 w-full rounded-lg border border-border bg-white px-3"
-                          >
-                            {offered.map((variant) => (
-                              <option key={variant.id} value={variant.id}>
-                                {variant.name} · {formatNaira(variant.priceKobo)}
-                                {variant.servesCount > 1 ? ` · feeds ${variant.servesCount}` : ""}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
+                        {offered.length > 1 ? (
+                          <fieldset>
+                            <legend className="text-sm font-medium">Size</legend>
+                            <div className="mt-2 grid grid-cols-2 gap-2">
+                              {offered.map((variant) => {
+                                const selectedSize = variant.id === chosen.id
+                                return (
+                                  <label
+                                    key={variant.id}
+                                    className={`flex min-h-11 cursor-pointer flex-col justify-center rounded-xl border px-3 py-2 transition-[border-color,background-color] duration-200 ease-in-out [@media(hover:hover)_and_(pointer:fine)]:hover:border-palm ${
+                                      selectedSize ? "border-palm bg-[#eef6f1]" : "border-border bg-white"
+                                    }`}
+                                  >
+                                    <span className="flex items-center gap-2">
+                                      <input
+                                        type="radio"
+                                        name={`size-${item.id}`}
+                                        value={variant.id}
+                                        checked={selectedSize}
+                                        onChange={() => setVariantChoice((current) => ({ ...current, [item.id]: variant.id }))}
+                                        className="size-4 accent-palm"
+                                      />
+                                      <span className="text-sm font-semibold">{variant.name}</span>
+                                    </span>
+                                    <span className="pl-6 text-sm text-muted-foreground">
+                                      {formatNaira(variant.priceKobo)}
+                                      {variant.servesCount > 1 ? ` · feeds ${variant.servesCount}` : ""}
+                                    </span>
+                                  </label>
+                                )
+                              })}
+                            </div>
+                          </fieldset>
+                        ) : null}
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2">
                             <button type="button" aria-label={`Fewer ${item.name}`} className="inline-flex size-11 items-center justify-center rounded-lg border border-border" onClick={() => setQuantities((current) => ({ ...current, [item.id]: Math.max(1, quantity - 1) }))}>
