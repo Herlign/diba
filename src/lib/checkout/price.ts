@@ -8,6 +8,7 @@ import {
 export type CheckoutLine = {
   variantId: string
   nameSnapshot: string
+  variantLabelSnapshot: string
   quantity: number
   unitPriceKobo: number
 }

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma"
 import { formatDayLabel, formatWindow } from "@/lib/dates"
 import { requireSection } from "@/lib/admin/require"
 import { markSlotDelivered } from "@/lib/admin/mutations"
+import { formatOrderLine } from "@/lib/ordering/line-label"
 import { PassScanner } from "@/components/admin/scanner"
 
 export const metadata = { title: "Dispatch" }
@@ -61,7 +62,7 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
             {lookup.slots.map((slot) => (
               <li key={slot.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
                 <span>
-                  {formatDayLabel(slot.mealSlot.date)} · {slot.mealSlot.mealPeriod.name} · {slot.items.map((item) => `${item.quantity}× ${item.nameSnapshot}`).join(", ")} ·{" "}
+                  {formatDayLabel(slot.mealSlot.date)} · {slot.mealSlot.mealPeriod.name} · {slot.items.map((item) => formatOrderLine(item)).join(", ")} ·{" "}
                   {slot.status.toLowerCase().replaceAll("_", " ")}
                 </span>
                 {slot.status !== "DELIVERED" && slot.status !== "CANCELLED" ? (
@@ -107,7 +108,7 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
                     <p className="font-semibold">
                       {row.order.attendee.fullName} · {row.order.attendee.phone} · {row.order.numberOfPeople} people · {row.status.toLowerCase().replaceAll("_", " ")}
                     </p>
-                    <p>{row.items.map((item) => `${item.quantity}× ${item.nameSnapshot}`).join(", ")}</p>
+                    <p>{row.items.map((item) => formatOrderLine(item)).join(", ")}</p>
                     {row.order.dietaryNotes ? <p className="text-muted-foreground">{row.order.dietaryNotes}</p> : null}
                   </li>
                 ))}

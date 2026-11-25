@@ -13,6 +13,7 @@ function slot(dateKey: string, periodId: string, unitPriceKobo: number) {
       {
         variantId: "akara",
         nameSnapshot: "Akara & Pap · Regular",
+        variantLabelSnapshot: "Regular",
         quantity: 1,
         unitPriceKobo,
       },
@@ -40,6 +41,7 @@ describe("priceCheckout", () => {
     expect(quote.subtotalKobo).toBe(700_000)
     expect(quote.discountKobo).toBe(0)
     expect(quote.slots[0]?.lines[0]?.nameSnapshot).toBe("Akara & Pap · Regular")
+    expect(quote.slots[0]?.lines[0]?.variantLabelSnapshot).toBe("Regular")
     expect(quote.slots[0]?.lines[0]?.unitPriceKobo).toBe(350_000)
   })
 

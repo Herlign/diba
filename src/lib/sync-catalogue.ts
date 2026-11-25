@@ -6,8 +6,8 @@ import {
   ORDER_CUTOFF_HOURS,
   PROGRAMMES,
   SERVICE_WINDOWS,
-  VARIANT_NAME,
   periodsFor,
+  portionsFor,
   type CatalogueProgramme,
 } from "@/lib/catalogue"
 import { cutoffInstant, deliveryStartFromKey } from "@/lib/ordering/rules"
@@ -116,7 +116,7 @@ export async function syncCatalogue(db: Db): Promise<ContentSummary> {
     })
   }
 
-  const variantIds = new Map<string, string>()
+  const variantIds = new Map<string, string[]>()
   for (const [index, item] of MENU_ITEMS.entries()) {
     const category = await db.category.findUniqueOrThrow({ where: { slug: item.category } })
     const saved = await db.menuItem.upsert({
@@ -142,32 +142,38 @@ export async function syncCatalogue(db: Db): Promise<ContentSummary> {
         categoryId: category.id,
       },
     })
-    const variant = await db.menuItemVariant.upsert({
-      where: { menuItemId_name: { menuItemId: saved.id, name: VARIANT_NAME } },
-      create: {
-        menuItemId: saved.id,
-        name: VARIANT_NAME,
-        priceKobo: item.priceKobo,
-        servesCount: 1,
-        prepMinutes: item.category === "extras" ? 15 : 35,
-        isAvailable: true,
-        position: 0,
-      },
-      update: {
-        priceKobo: item.priceKobo,
-        isAvailable: true,
-        prepMinutes: item.category === "extras" ? 15 : 35,
-      },
-    })
+    const portions = portionsFor(item)
+    const ids: string[] = []
+    for (const portion of portions) {
+      const variant = await db.menuItemVariant.upsert({
+        where: { menuItemId_name: { menuItemId: saved.id, name: portion.name } },
+        create: {
+          menuItemId: saved.id,
+          name: portion.name,
+          priceKobo: portion.priceKobo,
+          servesCount: 1,
+          prepMinutes: item.category === "extras" ? 15 : 35,
+          isAvailable: true,
+          position: portion.position,
+        },
+        update: {
+          priceKobo: portion.priceKobo,
+          isAvailable: true,
+          position: portion.position,
+          prepMinutes: item.category === "extras" ? 15 : 35,
+        },
+      })
+      ids.push(variant.id)
+    }
     await db.menuItemVariant.updateMany({
-      where: { menuItemId: saved.id, name: { not: VARIANT_NAME } },
+      where: { menuItemId: saved.id, name: { notIn: portions.map((portion) => portion.name) } },
       data: { isAvailable: false },
     })
-    variantIds.set(item.slug, variant.id)
+    variantIds.set(item.slug, ids)
     summary.menuItems += 1
   }
 
-  const liveVariantIds = [...variantIds.values()]
+  const liveVariantIds = [...variantIds.values()].flat()
   for (const spec of PROGRAMMES) {
     const church = await db.church.upsert({
       where: { slug: spec.church.slug },
@@ -277,32 +283,33 @@ export async function syncCatalogue(db: Db): Promise<ContentSummary> {
     }
 
     for (const item of MENU_ITEMS) {
-      const variantId = variantIds.get(item.slug)!
-      const offering = await db.programmeMenuItem.upsert({
-        where: { programmeId_variantId: { programmeId: programme.id, variantId } },
-        create: { programmeId: programme.id, variantId, isActive: true },
-        update: { isActive: true, priceKoboOverride: null },
-      })
       const wantedPeriods = new Set(periodsFor(item).map((name) => periodIds.get(name)!))
-      const links = await db.programmeMenuItemPeriod.findMany({
-        where: { programmeMenuItemId: offering.id },
-      })
-      for (const link of links) {
-        if (!wantedPeriods.has(link.mealPeriodId)) {
-          await db.programmeMenuItemPeriod.delete({ where: { id: link.id } })
-        }
-      }
-      for (const mealPeriodId of wantedPeriods) {
-        await db.programmeMenuItemPeriod.upsert({
-          where: {
-            programmeMenuItemId_mealPeriodId: {
-              programmeMenuItemId: offering.id,
-              mealPeriodId,
-            },
-          },
-          create: { programmeMenuItemId: offering.id, mealPeriodId },
-          update: {},
+      for (const variantId of variantIds.get(item.slug) ?? []) {
+        const offering = await db.programmeMenuItem.upsert({
+          where: { programmeId_variantId: { programmeId: programme.id, variantId } },
+          create: { programmeId: programme.id, variantId, isActive: true },
+          update: { isActive: true, priceKoboOverride: null },
         })
+        const links = await db.programmeMenuItemPeriod.findMany({
+          where: { programmeMenuItemId: offering.id },
+        })
+        for (const link of links) {
+          if (!wantedPeriods.has(link.mealPeriodId)) {
+            await db.programmeMenuItemPeriod.delete({ where: { id: link.id } })
+          }
+        }
+        for (const mealPeriodId of wantedPeriods) {
+          await db.programmeMenuItemPeriod.upsert({
+            where: {
+              programmeMenuItemId_mealPeriodId: {
+                programmeMenuItemId: offering.id,
+                mealPeriodId,
+              },
+            },
+            create: { programmeMenuItemId: offering.id, mealPeriodId },
+            update: {},
+          })
+        }
       }
     }
 

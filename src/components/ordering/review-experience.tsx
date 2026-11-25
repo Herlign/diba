@@ -91,15 +91,17 @@ export function ReviewExperience({ programmeId, slug, title }: { programmeId: st
                     {period.lines.map((line) => (
                       <li key={line.variantId} className="flex items-center justify-between gap-3">
                         <div>
-                          <p className="text-sm font-medium">{line.name}</p>
-                          <p className="text-sm text-muted-foreground">{formatNaira(line.lineTotalKobo)}</p>
+                          <p className="text-sm font-medium">{line.itemName}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {line.variantLabel} · {formatNaira(line.lineTotalKobo)}
+                          </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <button type="button" aria-label={`Fewer ${line.name}`} className="inline-flex size-11 items-center justify-center rounded-lg border border-border" onClick={() => setQuantity(programmeId, period.mealSlotId, line.variantId, line.quantity - 1)}>
+                          <button type="button" aria-label={`Fewer ${line.itemName} ${line.variantLabel}`} className="inline-flex size-11 items-center justify-center rounded-lg border border-border" onClick={() => setQuantity(programmeId, period.mealSlotId, line.variantId, line.quantity - 1)}>
                             <Minus className="size-4" />
                           </button>
                           <span className="w-6 text-center text-sm">{line.quantity}</span>
-                          <button type="button" aria-label={`More ${line.name}`} className="inline-flex size-11 items-center justify-center rounded-lg border border-border" onClick={() => setQuantity(programmeId, period.mealSlotId, line.variantId, Math.min(20, line.quantity + 1))}>
+                          <button type="button" aria-label={`More ${line.itemName} ${line.variantLabel}`} className="inline-flex size-11 items-center justify-center rounded-lg border border-border" onClick={() => setQuantity(programmeId, period.mealSlotId, line.variantId, Math.min(20, line.quantity + 1))}>
                             <Plus className="size-4" />
                           </button>
                         </div>

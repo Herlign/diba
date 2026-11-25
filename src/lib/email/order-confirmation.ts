@@ -2,6 +2,7 @@ import "server-only"
 import { prisma } from "@/lib/prisma"
 import { formatDayLabel, formatWindow } from "@/lib/dates"
 import { formatNaira } from "@/lib/money"
+import { formatOrderLine } from "@/lib/ordering/line-label"
 import { siteUrl } from "@/lib/site"
 import { sendEmail } from "@/lib/email/send"
 
@@ -24,7 +25,7 @@ export async function sendOrderConfirmation(orderId: string) {
   if (!order || order.status !== "PAID") return
   const url = `${siteUrl()}/orders/${order.reference}?token=${order.accessToken}`
   const lines = order.slots.map((slot) => {
-    const meals = slot.items.map((item) => `${item.quantity}× ${item.nameSnapshot}`).join(", ")
+    const meals = slot.items.map((item) => formatOrderLine(item)).join(", ")
     const when = `${formatDayLabel(slot.mealSlot.date)} ${slot.mealSlot.mealPeriod.name} (${formatWindow(slot.mealSlot.mealPeriod.deliveryWindowStart, slot.mealSlot.mealPeriod.deliveryWindowEnd)})`
     return `${when}: ${meals}`
   })
