@@ -41,7 +41,7 @@ const faqs = [
   },
   {
     q: "What about refunds?",
-    a: "A slot still before its cutoff can be cancelled. That raises a refund request for the church team. The MVP does not refund automatically.",
+    a: "Cancellations made after payment are generally non-refundable. For payment-related issues or refund enquiries, please contact our support team for assistance.",
   },
   {
     q: "Can I order for a group?",
