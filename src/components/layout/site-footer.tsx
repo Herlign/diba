@@ -1,15 +1,15 @@
 import { Logo } from "@/components/layout/logo"
-import { MARKETING, ORDER_CUTOFF_HOURS } from "@/lib/catalogue"
+import { ORDER_CUTOFF_HOURS } from "@/lib/catalogue"
 import { foodPhotos } from "@/lib/food-photos"
 
-export function SiteFooter() {
+export function SiteFooter({ footer }: { footer: string }) {
   return (
     <footer className="mt-auto border-t border-border bg-white text-ink">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-12 sm:px-6">
         <div className="flex flex-col justify-between gap-6 sm:flex-row sm:items-end">
           <div className="max-w-md space-y-3">
             <Logo />
-            <p className="text-sm leading-6 text-muted-foreground">{MARKETING.footer}</p>
+            <p className="text-sm leading-6 text-muted-foreground">{footer}</p>
           </div>
           <div className="text-sm text-muted-foreground">
             <p>Orders close {ORDER_CUTOFF_HOURS} hours before each slot.</p>

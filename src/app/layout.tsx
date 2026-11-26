@@ -1,8 +1,9 @@
+import type { ReactNode } from "react"
 import type { Metadata } from "next"
 import { Fraunces, Outfit } from "next/font/google"
 import { AnalyticsScripts } from "@/components/analytics/scripts"
 import { SiteChrome } from "@/components/layout/site-chrome"
-import { MARKETING } from "@/lib/catalogue"
+import { getSiteContent } from "@/lib/site-content"
 import "./globals.css"
 
 const outfit = Outfit({
@@ -17,28 +18,34 @@ const fraunces = Fraunces({
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://127.0.0.1:4317"
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: {
-    default: "Diba Meals",
-    template: "%s · Diba Meals",
-  },
-  description: `${MARKETING.headlineLead} ${MARKETING.headlineRest}. ${MARKETING.footer}`,
-  openGraph: {
-    title: "Diba Meals",
-    description: `${MARKETING.headlineLead} ${MARKETING.headlineRest}. Morning, afternoon and evening, delivered at the programme venue.`,
-    locale: "en_NG",
-    type: "website",
-    url: siteUrl,
-  },
-  twitter: {
-    card: "summary",
-    title: "Diba Meals",
-    description: `${MARKETING.headlineLead} ${MARKETING.headlineRest}. Morning, afternoon and evening, delivered at the programme venue.`,
-  },
+export async function generateMetadata(): Promise<Metadata> {
+  const content = await getSiteContent()
+  const description = `${content.headlineLead} ${content.headlineRest}. ${content.footer}`
+  const social = `${content.headlineLead} ${content.headlineRest}. Morning, afternoon and evening, delivered at the programme venue.`
+  return {
+    metadataBase: new URL(siteUrl),
+    title: {
+      default: "Diba Meals",
+      template: "%s · Diba Meals",
+    },
+    description,
+    openGraph: {
+      title: "Diba Meals",
+      description: social,
+      locale: "en_NG",
+      type: "website",
+      url: siteUrl,
+    },
+    twitter: {
+      card: "summary",
+      title: "Diba Meals",
+      description: social,
+    },
+  }
 }
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const content = await getSiteContent()
   return (
     <html
       lang="en-NG"
@@ -52,7 +59,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Skip to content
         </a>
         <AnalyticsScripts gtmId={process.env.NEXT_PUBLIC_GTM_ID} pixelId={process.env.NEXT_PUBLIC_META_PIXEL_ID} />
-        <SiteChrome>{children}</SiteChrome>
+        <SiteChrome footer={content.footer}>{children}</SiteChrome>
       </body>
     </html>
   )

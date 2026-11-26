@@ -19,7 +19,12 @@ export async function getStaff(): Promise<StaffSession | null> {
   if (!token) return null
   const session = readStaffSession(token, key)
   if (!session || !isStaffRole(session.role)) return null
-  return session
+  const user = await prisma.staffUser.findUnique({
+    where: { id: session.id },
+    select: { id: true, email: true, name: true, role: true, isActive: true },
+  })
+  if (!user || !user.isActive || !isStaffRole(user.role)) return null
+  return { id: user.id, email: user.email, name: user.name, role: user.role, exp: session.exp }
 }
 
 export async function startStaffSession(email: string, password: string) {

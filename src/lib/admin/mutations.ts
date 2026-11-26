@@ -1,10 +1,11 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { can } from "@/lib/auth/access"
 import { getStaff } from "@/lib/auth/session"
+import { noticeTo } from "@/lib/admin/guard"
+import { revalidatePublic } from "@/lib/admin/revalidate"
 import { rateLimit } from "@/lib/rate-limit"
 import { assessRedemption } from "@/lib/passes/redeem"
 import { lagosDateKey } from "@/lib/ordering/rules"
@@ -13,7 +14,15 @@ import { verifyPassToken } from "@/lib/passes/token"
 
 async function allow(section: "catalogue" | "orders" | "dispatch") {
   const staff = await getStaff()
-  if (!staff || !can(staff.role, section)) return null
+  if (!staff) {
+    if (section === "catalogue") noticeTo("/admin/login", "Sign in as the manager to save changes.")
+    return null
+  }
+  if (section === "catalogue") {
+    if (staff.role !== "SUPER_ADMIN") noticeTo("/admin", "Only the manager can save changes.")
+    return staff
+  }
+  if (!can(staff.role, section)) return null
   return staff
 }
 
@@ -27,7 +36,7 @@ export async function updateProgramme(formData: FormData) {
     where: { id },
     data: { status: status as "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED", orderCutoffHours: Math.min(168, Math.max(1, cutoff)) },
   })
-  revalidatePath("/admin/programmes")
+  revalidatePublic(["/admin/programmes"])
 }
 
 export async function updateSlot(formData: FormData) {
@@ -39,7 +48,7 @@ export async function updateSlot(formData: FormData) {
     where: { id },
     data: { capacity: Number.isFinite(capacity) && capacity >= 0 ? capacity : null, isOpen },
   })
-  revalidatePath("/admin/programmes")
+  revalidatePublic(["/admin/programmes"])
 }
 
 export async function updateVariant(formData: FormData) {
@@ -69,7 +78,7 @@ export async function updateVariant(formData: FormData) {
     where: { variantId: id },
     data: { isActive: isAvailable },
   })
-  revalidatePath("/admin/menu")
+  revalidatePublic(["/admin/menu"])
 }
 
 export async function createVariant(formData: FormData) {
@@ -124,7 +133,7 @@ export async function createVariant(formData: FormData) {
       }
     }
   }
-  revalidatePath("/admin/menu")
+  revalidatePublic(["/admin/menu"])
 }
 
 export async function removeVariant(formData: FormData) {
@@ -146,7 +155,7 @@ export async function removeVariant(formData: FormData) {
     await prisma.mealPlan.updateMany({ where: { defaultVariantId: id }, data: { defaultVariantId: null } })
     await prisma.menuItemVariant.delete({ where: { id } })
   }
-  revalidatePath("/admin/menu")
+  revalidatePublic(["/admin/menu"])
 }
 
 export async function archiveItem(formData: FormData) {
@@ -156,7 +165,7 @@ export async function archiveItem(formData: FormData) {
     where: { id },
     data: { isActive: false, archivedAt: new Date() },
   })
-  revalidatePath("/admin/menu")
+  revalidatePublic(["/admin/menu"])
 }
 
 export async function updatePlan(formData: FormData) {
@@ -172,7 +181,7 @@ export async function updatePlan(formData: FormData) {
       fixedPricePerSlotKobo: fixed ? Math.max(0, Math.round(Number(fixed) * 100)) : null,
     },
   })
-  revalidatePath("/admin/plans")
+  revalidatePublic(["/admin/plans"])
 }
 
 export async function createPromo(formData: FormData) {
@@ -191,7 +200,7 @@ export async function createPromo(formData: FormData) {
       isActive: true,
     },
   })
-  revalidatePath("/admin/promos")
+  revalidatePublic(["/admin/promos"])
 }
 
 export async function togglePromo(formData: FormData) {
@@ -200,31 +209,7 @@ export async function togglePromo(formData: FormData) {
   const promo = await prisma.promoCode.findUnique({ where: { id } })
   if (!promo) return
   await prisma.promoCode.update({ where: { id }, data: { isActive: !promo.isActive } })
-  revalidatePath("/admin/promos")
-}
-
-export async function createPoint(formData: FormData) {
-  if (!(await allow("catalogue"))) return
-  const venueId = String(formData.get("venueId") ?? "")
-  const name = String(formData.get("name") ?? "").trim()
-  if (!venueId || name.length < 2) return
-  await prisma.deliveryPoint.create({
-    data: {
-      venueId,
-      name,
-      description: String(formData.get("description") ?? "").trim(),
-    },
-  })
-  revalidatePath("/admin/points")
-}
-
-export async function togglePoint(formData: FormData) {
-  if (!(await allow("catalogue"))) return
-  const id = String(formData.get("id") ?? "")
-  const point = await prisma.deliveryPoint.findUnique({ where: { id } })
-  if (!point) return
-  await prisma.deliveryPoint.update({ where: { id }, data: { isActive: !point.isActive } })
-  revalidatePath("/admin/points")
+  revalidatePublic(["/admin/promos"])
 }
 
 export async function setOrderStatus(formData: FormData) {
@@ -269,23 +254,6 @@ export async function decideRefund(formData: FormData) {
     data: { status, note: note || undefined },
   })
   revalidatePath("/admin/refunds")
-}
-
-export async function inviteStaff(formData: FormData) {
-  const staff = await getStaff()
-  if (!staff || staff.role !== "SUPER_ADMIN") return
-  const email = String(formData.get("email") ?? "").trim().toLowerCase()
-  const name = String(formData.get("name") ?? "").trim()
-  const role = String(formData.get("role") ?? "")
-  const password = String(formData.get("password") ?? "")
-  if (!email.includes("@") || name.length < 2 || password.length < 8) return
-  if (!["SUPER_ADMIN", "CHURCH_ADMIN", "KITCHEN", "DISPATCH"].includes(role)) return
-  await prisma.staffUser.upsert({
-    where: { email },
-    create: { email, name, role: role as "SUPER_ADMIN" | "CHURCH_ADMIN" | "KITCHEN" | "DISPATCH", passwordHash: bcrypt.hashSync(password, 10) },
-    update: { name, role: role as "SUPER_ADMIN" | "CHURCH_ADMIN" | "KITCHEN" | "DISPATCH", passwordHash: bcrypt.hashSync(password, 10), isActive: true },
-  })
-  revalidatePath("/admin")
 }
 
 async function deliver(orderSlotId: string, staffId: string) {

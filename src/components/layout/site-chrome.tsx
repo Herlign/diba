@@ -5,7 +5,7 @@ import type { ReactNode } from "react"
 import { SiteFooter } from "@/components/layout/site-footer"
 import { SiteHeader } from "@/components/layout/site-header"
 
-export function SiteChrome({ children }: { children: ReactNode }) {
+export function SiteChrome({ children, footer }: { children: ReactNode; footer: string }) {
   const path = usePathname()
   const ops = path.startsWith("/admin")
   return (
@@ -14,7 +14,7 @@ export function SiteChrome({ children }: { children: ReactNode }) {
       <main id="main" className="flex-1">
         {children}
       </main>
-      {ops ? null : <SiteFooter />}
+      {ops ? null : <SiteFooter footer={footer} />}
     </>
   )
 }

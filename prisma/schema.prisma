@@ -428,6 +428,33 @@ model StaffUser {
   deliveries OrderSlot[]
 }
 
+/// Homepage copy the manager can edit. One row. Missing row falls back to the original wording.
+model SiteContent {
+  id           String   @id @default("site")
+  eyebrow      String
+  headlineLead String
+  headlineRest String
+  hero         String
+  footer       String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  faqs FaqEntry[]
+}
+
+model FaqEntry {
+  id        String      @id @default(cuid())
+  siteId    String      @default("site")
+  site      SiteContent @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  question  String
+  answer    String
+  position  Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([siteId, position])
+}
+
 model PromoCode {
   id           String            @id @default(cuid())
   code         String            @unique

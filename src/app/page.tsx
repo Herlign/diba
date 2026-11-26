@@ -7,8 +7,8 @@ import { Reveal } from "@/components/home/reveal"
 import { ProgrammeCard } from "@/components/programmes/programme-card"
 import { ProgrammeListSkeleton } from "@/components/programmes/programme-list"
 import { Search } from "lucide-react"
-import { MARKETING, ORDER_CUTOFF_HOURS, SERVICE_WINDOWS, serviceWindowSummary } from "@/lib/catalogue"
-import { formatClock } from "@/lib/dates"
+import { ORDER_CUTOFF_HOURS, serviceWindowSummary } from "@/lib/catalogue"
+import { getSiteContent } from "@/lib/site-content"
 import { friedRice, grilledChicken, grilledFish, jollof, plantain, yamAndEgg } from "@/lib/food-photos"
 import { listUpcomingProgrammes } from "@/lib/programmes"
 
@@ -30,25 +30,6 @@ const steps = [
   },
 ]
 
-const faqs = [
-  {
-    q: "When does ordering close?",
-    a: `Ordering closes ${ORDER_CUTOFF_HOURS} hours before that slot's delivery window starts. Morning (${SERVICE_WINDOWS[0].short}) locks at ${formatClock(SERVICE_WINDOWS[0].start)} the day before, afternoon (${SERVICE_WINDOWS[1].short}) at ${formatClock(SERVICE_WINDOWS[1].start)}, and evening (${SERVICE_WINDOWS[2].short}) at ${formatClock(SERVICE_WINDOWS[2].start)}.`,
-  },
-  {
-    q: "Where do I collect?",
-    a: "At a designated collection point inside the programme venue. You choose it at checkout.",
-  },
-  {
-    q: "What about refunds?",
-    a: "Cancellations made after payment are generally non-refundable. For payment-related issues or refund enquiries, please contact our support team for assistance.",
-  },
-  {
-    q: "Can I order for a group?",
-    a: "Yes. Checkout asks how many people the order feeds, and you can put a family or department name on it.",
-  },
-]
-
 const plates = [
   { photo: jollof, name: "Diba Party Jollof & Chicken", note: "All hours · from ₦3,850" },
   { photo: yamAndEgg, name: "Boiled yam & egg sauce", note: "With tea or coffee · all hours" },
@@ -64,18 +45,19 @@ const slip = [
   { when: "Sat dinner", plate: "Suya rice" },
 ]
 
-export default function HomePage() {
+export default async function HomePage() {
+  const content = await getSiteContent()
   return (
     <div>
       <section className="bg-white text-ink">
         <div className="mx-auto grid w-full max-w-6xl items-center gap-8 px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-12 lg:py-16">
           <div className="rise">
-            <p className="text-sm font-semibold tracking-wide text-palm uppercase">{MARKETING.eyebrow}</p>
+            <p className="text-sm font-semibold tracking-wide text-palm uppercase">{content.eyebrow}</p>
             <h1 className="mt-3 max-w-xl font-heading text-4xl leading-[0.98] text-balance sm:text-6xl">
-              {MARKETING.headlineLead}{" "}
-              <span className="bg-gold px-1 text-ink">{MARKETING.headlineRest}</span>
+              {content.headlineLead}{" "}
+              <span className="bg-gold px-1 text-ink">{content.headlineRest}</span>
             </h1>
-            <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">{MARKETING.hero}</p>
+            <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">{content.hero}</p>
             <form action="/programmes" method="get" className="mt-7 flex max-w-lg flex-col gap-2 sm:flex-row">
               <label className="sr-only" htmlFor="find-programme">
                 Find your programme
@@ -188,10 +170,10 @@ export default function HomePage() {
         <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-12 sm:px-6 lg:grid-cols-[0.8fr_1.2fr] lg:py-16">
           <h2 className="font-heading text-4xl">Before you order</h2>
           <div className="grid gap-3">
-            {faqs.map((item) => (
-              <details key={item.q} className="rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
-                <summary className="cursor-pointer text-base font-semibold">{item.q}</summary>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.a}</p>
+            {content.faqs.map((item) => (
+              <details key={item.id} className="rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
+                <summary className="cursor-pointer text-base font-semibold">{item.question}</summary>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.answer}</p>
               </details>
             ))}
           </div>
