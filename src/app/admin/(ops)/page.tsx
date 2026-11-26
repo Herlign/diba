@@ -4,15 +4,15 @@ import { formatNaira } from "@/lib/money"
 import { formatDayLabel } from "@/lib/dates"
 import { lagosDateKey } from "@/lib/ordering/rules"
 import { requireSection } from "@/lib/admin/require"
-import { inviteStaff } from "@/lib/admin/mutations"
+import { Notice } from "@/components/admin/notice"
 
 export const metadata = { title: "Dashboard" }
 
 const PAID = ["PAID", "PARTIALLY_FULFILLED", "FULFILLED"] as const
 
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ programme?: string }> }) {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ programme?: string; notice?: string }> }) {
   const staff = await requireSection("overview")
-  const { programme: programmeId } = await searchParams
+  const { programme: programmeId, notice } = await searchParams
   const programmes = await prisma.programme.findMany({ orderBy: { startDate: "asc" }, include: { church: true } })
   const paidByProgramme = await prisma.order.groupBy({
     by: ["programmeId"],
@@ -85,6 +85,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </form>
         ) : null}
       </div>
+      <Notice notice={notice} />
       <dl className="grid gap-3 sm:grid-cols-3">
         <Stat label="Paid revenue" value={formatNaira(revenue)} />
         <Stat label="Paid orders" value={String(paid.length)} />
@@ -130,22 +131,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         </div>
       </section>
       {staff.role === "SUPER_ADMIN" ? (
-        <form action={inviteStaff} className="rounded-2xl bg-white p-4 ring-1 ring-foreground/10">
-          <h2 className="font-heading text-2xl">Invite staff</h2>
-          <div className="mt-3 grid gap-2 sm:grid-cols-4">
-            <input name="name" required placeholder="Name" className="h-11 rounded-lg border border-border px-3" />
-            <input name="email" type="email" required placeholder="Email" className="h-11 rounded-lg border border-border px-3" />
-            <select name="role" className="h-11 rounded-lg border border-border px-3">
-              <option value="KITCHEN">Kitchen</option>
-              <option value="DISPATCH">Dispatch</option>
-              <option value="CHURCH_ADMIN">Church admin</option>
-            </select>
-            <input name="password" type="password" required minLength={8} placeholder="Temporary password" className="h-11 rounded-lg border border-border px-3" />
-          </div>
-          <button type="submit" className="mt-3 h-11 rounded-lg bg-palm px-4 text-sm font-semibold text-cream">
-            Save staff
-          </button>
-        </form>
+        <section className="rounded-2xl bg-white p-4 ring-1 ring-foreground/10">
+          <h2 className="font-heading text-2xl">Team</h2>
+          <p className="mt-2 text-sm text-muted-foreground">Add someone, change their role, set a new password, or turn an account off.</p>
+          <Link href="/admin/staff" className="mt-3 inline-flex h-11 items-center rounded-lg bg-palm px-4 text-sm font-semibold text-cream">
+            Open team
+          </Link>
+        </section>
       ) : null}
     </div>
   )

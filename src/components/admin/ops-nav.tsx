@@ -6,13 +6,16 @@ import { Logo } from "@/components/layout/logo"
 import { can, type OpsSection, type StaffRoleName } from "@/lib/auth/access"
 import { logoutAction } from "@/lib/auth/actions"
 
-const LINKS: { href: string; label: string; section: OpsSection }[] = [
+const LINKS: { href: string; label: string; section: OpsSection; managerOnly?: boolean }[] = [
   { href: "/admin", label: "Dashboard", section: "overview" },
   { href: "/admin/programmes", label: "Programmes", section: "catalogue" },
   { href: "/admin/menu", label: "Menu", section: "catalogue" },
+  { href: "/admin/churches", label: "Churches", section: "catalogue" },
+  { href: "/admin/venues", label: "Venues", section: "catalogue" },
+  { href: "/admin/content", label: "Homepage", section: "catalogue", managerOnly: true },
+  { href: "/admin/staff", label: "Team", section: "catalogue", managerOnly: true },
   { href: "/admin/plans", label: "Plans", section: "catalogue" },
   { href: "/admin/promos", label: "Promos", section: "catalogue" },
-  { href: "/admin/points", label: "Drop points", section: "catalogue" },
   { href: "/admin/orders", label: "Orders", section: "orders" },
   { href: "/admin/review", label: "Review", section: "orders" },
   { href: "/admin/refunds", label: "Refunds", section: "orders" },
@@ -22,7 +25,7 @@ const LINKS: { href: string; label: string; section: OpsSection }[] = [
 
 export function OpsNav({ role, name }: { role: StaffRoleName; name: string }) {
   const path = usePathname()
-  const links = LINKS.filter((link) => can(role, link.section))
+  const links = LINKS.filter((link) => can(role, link.section) && (!link.managerOnly || role === "SUPER_ADMIN"))
   return (
     <header className="ops-chrome sticky top-0 z-40 border-b border-border bg-white">
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6">

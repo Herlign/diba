@@ -10,7 +10,7 @@ async function main() {
   }
   // Sequential upserts so a pooled Postgres URL works. A failed run is safe to repeat.
   const summary = await syncCatalogue(prisma)
-  console.log("Diba content updated. Staff accounts and orders were not changed.")
+  console.log("Diba content checked. Only missing rows were added. Saved dishes, prices, photos, programmes, staff and orders were left as they are.")
   console.log(JSON.stringify(summary, null, 2))
 }
 

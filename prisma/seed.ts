@@ -1,6 +1,7 @@
 import { PrismaClient, type StaffRole } from "@prisma/client"
 import bcrypt from "bcryptjs"
 import { syncCatalogue } from "../src/lib/sync-catalogue"
+import { ensureSiteContent } from "../src/lib/ensure-site-content"
 
 const prisma = new PrismaClient()
 
@@ -28,6 +29,8 @@ const STAFF = [
 async function reset() {
   await prisma.$executeRawUnsafe(`
     TRUNCATE TABLE
+      "FaqEntry",
+      "SiteContent",
       "Payment",
       "OrderItem",
       "OrderSlot",
@@ -66,7 +69,8 @@ async function main() {
   }
   // Portion prices, including party jollof and Hake fish, come from the catalogue sync.
   const summary = await syncCatalogue(prisma)
-  console.log("Seeded staff and the December 2026 programmes. This wipe is for empty databases only.")
+  await ensureSiteContent(prisma)
+  console.log("Seeded staff and the December 2026 programmes. This wipe is for empty databases only. Never seed a database that has real orders.")
   console.log(JSON.stringify(summary, null, 2))
   for (const member of STAFF) {
     console.log(`${member.role} ${member.email} / ${member.password}`)
