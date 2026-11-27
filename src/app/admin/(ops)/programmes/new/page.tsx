@@ -7,6 +7,8 @@ import { BLOB_SETUP_MESSAGE, blobReady } from "@/lib/blob-upload"
 import { Notice } from "@/components/admin/notice"
 import { NameSlugFields } from "@/components/admin/name-slug-fields"
 
+export const instant = false
+
 export const metadata = { title: "New programme" }
 
 const STATUSES = [
@@ -15,7 +17,7 @@ const STATUSES = [
   ["CLOSED", "Closed — visible, ordering stopped"],
 ] as const
 
-export default async function NewProgrammePage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
+export default async function NewProgrammePage({ searchParams }: { searchParams: Promise<{ notice?: string; error?: string }> }) {
   const staff = await requireSection("catalogue")
   if (staff.role !== "SUPER_ADMIN") {
     return (
@@ -25,7 +27,7 @@ export default async function NewProgrammePage({ searchParams }: { searchParams:
       </div>
     )
   }
-  const { notice } = await searchParams
+  const { notice, error } = await searchParams
   const [churches, venues] = await Promise.all([
     prisma.church.findMany({ where: { isActive: true, archivedAt: null }, orderBy: { name: "asc" } }),
     prisma.venue.findMany({ where: { archivedAt: null }, orderBy: { name: "asc" }, include: { deliveryPoints: true } }),
@@ -39,7 +41,7 @@ export default async function NewProgrammePage({ searchParams }: { searchParams:
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
         A new programme starts as a draft, so it does not appear on the site until you publish it.
       </p>
-      <Notice notice={notice} />
+      <Notice notice={notice} error={error} />
       {blobReady() ? null : <p className="mt-4 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-foreground/10">{BLOB_SETUP_MESSAGE}</p>}
       {churches.length === 0 || venues.length === 0 ? (
         <p className="mt-4 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-foreground/10">

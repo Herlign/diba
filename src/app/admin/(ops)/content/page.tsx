@@ -5,12 +5,14 @@ import { saveSiteContent } from "@/lib/admin/content-mutations"
 import { Notice } from "@/components/admin/notice"
 import { DEFAULT_FAQS, DEFAULT_SITE_CONTENT, SITE_ID } from "@/lib/site-copy"
 
+export const instant = false
+
 export const metadata = { title: "Homepage" }
 
-export default async function ContentPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
+export default async function ContentPage({ searchParams }: { searchParams: Promise<{ notice?: string; error?: string }> }) {
   const staff = await requireSection("catalogue")
   if (staff.role !== "SUPER_ADMIN") redirect("/admin")
-  const { notice } = await searchParams
+  const { notice, error } = await searchParams
   const row = await prisma.siteContent.findUnique({
     where: { id: SITE_ID },
     include: { faqs: { orderBy: { position: "asc" } } },
@@ -24,7 +26,7 @@ export default async function ContentPage({ searchParams }: { searchParams: Prom
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
         These words appear on the public homepage and in the footer. The site stays as it is until you save a change.
       </p>
-      <Notice notice={notice} />
+      <Notice notice={notice} error={error} />
       <form action={saveSiteContent} className="mt-4 grid gap-3 rounded-2xl bg-white p-4 ring-1 ring-foreground/10">
         <label className="block text-sm">
           Small line above the title

@@ -1,5 +1,6 @@
 import "server-only"
 import { cookies } from "next/headers"
+import { connection } from "next/server"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { isStaffRole, type StaffRoleName } from "@/lib/auth/access"
@@ -13,6 +14,7 @@ function secret() {
 }
 
 export async function getStaff(): Promise<StaffSession | null> {
+  await connection()
   const key = secret()
   if (!key) return null
   const token = (await cookies()).get(COOKIE)?.value

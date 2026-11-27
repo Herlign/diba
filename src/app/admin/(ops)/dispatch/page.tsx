@@ -5,6 +5,8 @@ import { markSlotDelivered } from "@/lib/admin/mutations"
 import { formatOrderLine } from "@/lib/ordering/line-label"
 import { PassScanner } from "@/components/admin/scanner"
 
+export const instant = false
+
 export const metadata = { title: "Dispatch" }
 
 const PAID = ["PAID", "PARTIALLY_FULFILLED", "FULFILLED"] as const

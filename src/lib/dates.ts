@@ -39,6 +39,13 @@ export function formatLagosMoment(date: Date) {
   return `${day}, ${formatClock(clock)}`
 }
 
+/** Accepts 07:15 and 07:15:00, the second form some browsers submit. */
+export function parseClock(value: string): string | null {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?$/.exec(value.trim())
+  if (!match) return null
+  return `${match[1]}:${match[2]}`
+}
+
 export function formatClock(hhmm: string) {
   const [hourText, minuteText] = hhmm.split(":")
   const hour = Number(hourText)

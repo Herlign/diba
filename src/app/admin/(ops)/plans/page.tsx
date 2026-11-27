@@ -1,11 +1,15 @@
 import { prisma } from "@/lib/prisma"
 import { requireSection } from "@/lib/admin/require"
 import { updatePlan } from "@/lib/admin/mutations"
+import { Notice } from "@/components/admin/notice"
+
+export const instant = false
 
 export const metadata = { title: "Meal plans" }
 
-export default async function PlansAdminPage() {
+export default async function PlansAdminPage({ searchParams }: { searchParams: Promise<{ notice?: string; error?: string }> }) {
   await requireSection("catalogue")
+  const { notice, error } = await searchParams
   const plans = await prisma.mealPlan.findMany({
     where: { archivedAt: null },
     orderBy: [{ programme: { startDate: "asc" } }, { position: "asc" }],
@@ -14,6 +18,7 @@ export default async function PlansAdminPage() {
   return (
     <div>
       <h1 className="font-heading text-4xl">Meal plans</h1>
+      <Notice notice={notice} error={error} />
       <ul className="mt-4 space-y-3">
         {plans.map((plan) => (
           <li key={plan.id} className="rounded-2xl bg-white p-4 ring-1 ring-foreground/10">
@@ -29,7 +34,7 @@ export default async function PlansAdminPage() {
               </label>
               <label className="text-sm">
                 Fixed ₦ / slot
-                <input name="fixedNaira" type="number" min={0} defaultValue={plan.fixedPricePerSlotKobo ? plan.fixedPricePerSlotKobo / 100 : ""} className="mt-1 block h-11 w-32 rounded-lg border border-border px-3" />
+                <input name="fixedNaira" inputMode="decimal" autoComplete="off" placeholder="1,500" defaultValue={plan.fixedPricePerSlotKobo ? plan.fixedPricePerSlotKobo / 100 : ""} className="mt-1 block h-11 w-32 rounded-lg border border-border px-3" />
               </label>
               <label className="flex h-11 items-center gap-2 text-sm">
                 <input name="isActive" type="checkbox" defaultChecked={plan.isActive} className="size-5 accent-palm" />

@@ -6,13 +6,15 @@ import { lagosDateKey } from "@/lib/ordering/rules"
 import { requireSection } from "@/lib/admin/require"
 import { Notice } from "@/components/admin/notice"
 
+export const instant = false
+
 export const metadata = { title: "Dashboard" }
 
 const PAID = ["PAID", "PARTIALLY_FULFILLED", "FULFILLED"] as const
 
-export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ programme?: string; notice?: string }> }) {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ programme?: string; notice?: string; error?: string }> }) {
   const staff = await requireSection("overview")
-  const { programme: programmeId, notice } = await searchParams
+  const { programme: programmeId, notice, error } = await searchParams
   const programmes = await prisma.programme.findMany({ orderBy: { startDate: "asc" }, include: { church: true } })
   const paidByProgramme = await prisma.order.groupBy({
     by: ["programmeId"],
@@ -85,7 +87,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
           </form>
         ) : null}
       </div>
-      <Notice notice={notice} />
+      <Notice notice={notice} error={error} />
       <dl className="grid gap-3 sm:grid-cols-3">
         <Stat label="Paid revenue" value={formatNaira(revenue)} />
         <Stat label="Paid orders" value={String(paid.length)} />

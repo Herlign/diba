@@ -3,11 +3,13 @@ import { requireSection } from "@/lib/admin/require"
 import { createPoint, savePoint, saveVenue, togglePoint } from "@/lib/admin/place-mutations"
 import { Notice } from "@/components/admin/notice"
 
+export const instant = false
+
 export const metadata = { title: "Venues" }
 
-export default async function VenuesPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
+export default async function VenuesPage({ searchParams }: { searchParams: Promise<{ notice?: string; error?: string }> }) {
   await requireSection("catalogue")
-  const { notice } = await searchParams
+  const { notice, error } = await searchParams
   const venues = await prisma.venue.findMany({
     orderBy: { name: "asc" },
     include: { deliveryPoints: { orderBy: { position: "asc" } }, _count: { select: { programmes: true } } },
@@ -18,7 +20,7 @@ export default async function VenuesPage({ searchParams }: { searchParams: Promi
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
         A venue is where the programme meets. Collection points are the places inside it where meals are dropped. Checkout needs at least one.
       </p>
-      <Notice notice={notice} />
+      <Notice notice={notice} error={error} />
 
       <form action={saveVenue} className="mt-4 grid gap-3 rounded-2xl bg-white p-4 ring-1 ring-foreground/10 sm:grid-cols-2">
         <h2 className="font-heading text-2xl sm:col-span-2">New venue</h2>

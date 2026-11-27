@@ -1,25 +1,33 @@
 "use server"
 
+import { Prisma } from "@prisma/client"
 import { revalidatePath } from "next/cache"
 import { prisma } from "@/lib/prisma"
 import { can } from "@/lib/auth/access"
 import { getStaff } from "@/lib/auth/session"
-import { noticeTo } from "@/lib/admin/guard"
+import { failTo, noticeTo } from "@/lib/admin/guard"
 import { revalidatePublic } from "@/lib/admin/revalidate"
+import { formatNaira, parseNairaToKobo } from "@/lib/money"
 import { rateLimit } from "@/lib/rate-limit"
 import { assessRedemption } from "@/lib/passes/redeem"
 import { lagosDateKey } from "@/lib/ordering/rules"
 import { formatOrderLine } from "@/lib/ordering/line-label"
 import { verifyPassToken } from "@/lib/passes/token"
 
+const PRICE_ERROR = "Enter a price in naira, such as 1500 or 1,500."
+
+function isUnique(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002"
+}
+
 async function allow(section: "catalogue" | "orders" | "dispatch") {
   const staff = await getStaff()
   if (!staff) {
-    if (section === "catalogue") noticeTo("/admin/login", "Sign in as the manager to save changes.")
+    if (section === "catalogue") failTo("/admin/login", "Sign in as the manager to save changes.")
     return null
   }
   if (section === "catalogue") {
-    if (staff.role !== "SUPER_ADMIN") noticeTo("/admin", "Only the manager can save changes.")
+    if (staff.role !== "SUPER_ADMIN") failTo("/admin", "Only the manager can save changes.")
     return staff
   }
   if (!can(staff.role, section)) return null
@@ -30,47 +38,61 @@ export async function updateProgramme(formData: FormData) {
   if (!(await allow("catalogue"))) return
   const id = String(formData.get("id") ?? "")
   const status = String(formData.get("status") ?? "")
+  const programme = await prisma.programme.findUnique({ where: { id } })
+  const back = programme ? `/admin/programmes/${id}` : "/admin/programmes"
+  if (!programme) failTo("/admin/programmes", "That programme was not found.")
+  if (!["DRAFT", "PUBLISHED", "CLOSED", "ARCHIVED"].includes(status)) failTo(back, "Choose a status.")
   const cutoff = Number(formData.get("cutoff") ?? 24)
-  if (!["DRAFT", "PUBLISHED", "CLOSED", "ARCHIVED"].includes(status)) return
   await prisma.programme.update({
     where: { id },
-    data: { status: status as "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED", orderCutoffHours: Math.min(168, Math.max(1, cutoff)) },
+    data: {
+      status: status as "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED",
+      orderCutoffHours: Number.isFinite(cutoff) ? Math.min(168, Math.max(1, Math.round(cutoff))) : programme.orderCutoffHours,
+    },
   })
-  revalidatePublic(["/admin/programmes"])
+  revalidatePublic(["/admin/programmes", back])
+  noticeTo(back, "Programme saved.")
 }
 
 export async function updateSlot(formData: FormData) {
   if (!(await allow("catalogue"))) return
   const id = String(formData.get("id") ?? "")
-  const capacity = Number(formData.get("capacity") ?? 0)
+  const slot = await prisma.mealSlot.findUnique({ where: { id }, select: { programmeId: true } })
+  if (!slot) failTo("/admin/programmes", "That slot was not found.")
+  const back = `/admin/programmes/${slot.programmeId}`
+  const raw = String(formData.get("capacity") ?? "").trim()
+  if (!/^\d+$/.test(raw)) failTo(back, "Enter how many meals this slot can take.")
   const isOpen = formData.get("isOpen") === "on"
   await prisma.mealSlot.update({
     where: { id },
-    data: { capacity: Number.isFinite(capacity) && capacity >= 0 ? capacity : null, isOpen },
+    data: { capacity: Number(raw), isOpen },
   })
-  revalidatePublic(["/admin/programmes"])
+  revalidatePublic(["/admin/programmes", back])
+  noticeTo(back, isOpen ? `Slot saved. It can take ${raw} meals.` : "Slot saved and closed.")
 }
 
 export async function updateVariant(formData: FormData) {
   if (!(await allow("catalogue"))) return
   const id = String(formData.get("id") ?? "")
   const name = String(formData.get("name") ?? "").trim()
-  const naira = Number(formData.get("naira") ?? 0)
+  const priceKobo = parseNairaToKobo(String(formData.get("naira") ?? ""))
   const position = Number(formData.get("position") ?? 0)
-  if (name.length < 1 || name.length > 40 || !Number.isFinite(naira)) return
+  if (name.length < 1 || name.length > 40) failTo("/admin/menu", "Enter a size name, up to 40 characters.")
+  if (priceKobo === null) failTo("/admin/menu", PRICE_ERROR)
   const current = await prisma.menuItemVariant.findUnique({ where: { id } })
-  if (!current) return
+  if (!current) failTo("/admin/menu", "That size was not found.")
+  const dish = `/admin/menu#dish-${current.menuItemId}`
   const clash = await prisma.menuItemVariant.findFirst({
     where: { menuItemId: current.menuItemId, name, NOT: { id } },
   })
-  if (clash) return
+  if (clash) failTo(dish, "That size name is already used on this dish.")
   const isAvailable = formData.get("isAvailable") === "on"
   await prisma.menuItemVariant.update({
     where: { id },
     data: {
       name,
       position: Number.isFinite(position) ? Math.max(0, Math.round(position)) : current.position,
-      priceKobo: Math.max(0, Math.round(naira * 100)),
+      priceKobo,
       isAvailable,
     },
   })
@@ -79,14 +101,18 @@ export async function updateVariant(formData: FormData) {
     data: { isActive: isAvailable },
   })
   revalidatePublic(["/admin/menu"])
+  const hidden = isAvailable ? "" : " It is hidden from ordering."
+  noticeTo(dish, `Saved ${name} at ${formatNaira(priceKobo)}.${hidden}`)
 }
 
 export async function createVariant(formData: FormData) {
   if (!(await allow("catalogue"))) return
   const menuItemId = String(formData.get("menuItemId") ?? "")
   const name = String(formData.get("name") ?? "").trim()
-  const naira = Number(formData.get("naira") ?? 0)
-  if (!menuItemId || name.length < 1 || name.length > 40 || !Number.isFinite(naira)) return
+  const priceKobo = parseNairaToKobo(String(formData.get("naira") ?? ""))
+  if (!menuItemId) failTo("/admin/menu", "Choose a dish first.")
+  if (name.length < 1 || name.length > 40) failTo("/admin/menu", "Enter a size name, up to 40 characters.")
+  if (priceKobo === null) failTo("/admin/menu", PRICE_ERROR)
   const item = await prisma.menuItem.findUnique({
     where: { id: menuItemId },
     include: {
@@ -96,18 +122,18 @@ export async function createVariant(formData: FormData) {
       },
     },
   })
-  if (!item) return
+  if (!item) failTo("/admin/menu", "That dish was not found.")
   const variant = await prisma.menuItemVariant.upsert({
     where: { menuItemId_name: { menuItemId, name } },
     create: {
       menuItemId,
       name,
-      priceKobo: Math.max(0, Math.round(naira * 100)),
+      priceKobo,
       position: item.variants.length,
       isAvailable: true,
     },
     update: {
-      priceKobo: Math.max(0, Math.round(naira * 100)),
+      priceKobo,
       isAvailable: true,
     },
   })
@@ -134,6 +160,7 @@ export async function createVariant(formData: FormData) {
     }
   }
   revalidatePublic(["/admin/menu"])
+  noticeTo(`/admin/menu#dish-${menuItemId}`, `Saved the ${name} size at ${formatNaira(priceKobo)}.`)
 }
 
 export async function removeVariant(formData: FormData) {
@@ -143,9 +170,10 @@ export async function removeVariant(formData: FormData) {
     where: { id },
     include: { _count: { select: { orderItems: true } } },
   })
-  if (!variant) return
+  if (!variant) failTo("/admin/menu", "That size was not found.")
+  const dish = `/admin/menu#dish-${variant.menuItemId}`
   const siblings = await prisma.menuItemVariant.count({ where: { menuItemId: variant.menuItemId } })
-  if (siblings <= 1) return
+  if (siblings <= 1) failTo(dish, "Keep at least one size on this dish.")
   if (variant._count.orderItems > 0) {
     await prisma.menuItemVariant.update({ where: { id }, data: { isAvailable: false } })
     await prisma.programmeMenuItem.updateMany({ where: { variantId: id }, data: { isActive: false } })
@@ -156,60 +184,101 @@ export async function removeVariant(formData: FormData) {
     await prisma.menuItemVariant.delete({ where: { id } })
   }
   revalidatePublic(["/admin/menu"])
+  noticeTo(
+    dish,
+    variant._count.orderItems > 0 ? `${variant.name} is hidden because it is on an order.` : `Removed ${variant.name}.`,
+  )
 }
 
 export async function archiveItem(formData: FormData) {
   if (!(await allow("catalogue"))) return
   const id = String(formData.get("id") ?? "")
+  const item = await prisma.menuItem.findUnique({ where: { id } })
+  if (!item) failTo("/admin/menu", "That dish was not found.")
   await prisma.menuItem.update({
     where: { id },
     data: { isActive: false, archivedAt: new Date() },
   })
   revalidatePublic(["/admin/menu"])
+  noticeTo("/admin/menu", `${item.name} is archived. Restore it from the bottom of this page.`)
 }
 
 export async function updatePlan(formData: FormData) {
   if (!(await allow("catalogue"))) return
   const id = String(formData.get("id") ?? "")
-  const percent = formData.get("discountPercent")
-  const fixed = formData.get("fixedNaira")
+  const plan = await prisma.mealPlan.findUnique({ where: { id } })
+  if (!plan) failTo("/admin/plans", "That plan was not found.")
+  const percentText = String(formData.get("discountPercent") ?? "").trim()
+  const fixedText = String(formData.get("fixedNaira") ?? "").trim()
+  let discountPercent: number | null = null
+  if (percentText) {
+    const percent = Number(percentText.replace(/,/g, ""))
+    if (!Number.isFinite(percent) || percent < 0 || percent > 100) failTo("/admin/plans", "Enter a discount from 0 to 100.")
+    discountPercent = Math.round(percent)
+  }
+  let fixedPricePerSlotKobo: number | null = null
+  if (fixedText) {
+    const kobo = parseNairaToKobo(fixedText)
+    if (kobo === null) failTo("/admin/plans", PRICE_ERROR)
+    fixedPricePerSlotKobo = kobo
+  }
   await prisma.mealPlan.update({
     where: { id },
     data: {
       isActive: formData.get("isActive") === "on",
-      discountPercent: percent ? Math.min(100, Math.max(0, Number(percent))) : null,
-      fixedPricePerSlotKobo: fixed ? Math.max(0, Math.round(Number(fixed) * 100)) : null,
+      discountPercent,
+      fixedPricePerSlotKobo,
     },
   })
   revalidatePublic(["/admin/plans"])
+  noticeTo("/admin/plans", `${plan.name} saved.`)
 }
 
 export async function createPromo(formData: FormData) {
   if (!(await allow("catalogue"))) return
-  const code = String(formData.get("code") ?? "").trim().toUpperCase()
-  const percent = Number(formData.get("percent") ?? 0)
-  if (code.length < 3 || percent < 1) return
+  const code = String(formData.get("code") ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "")
+  const percent = Number(String(formData.get("percent") ?? "").trim())
+  if (!/^[A-Z0-9]{3,20}$/.test(code)) failTo("/admin/promos", "Use 3 to 20 letters or numbers for the code.")
+  if (!Number.isInteger(percent) || percent < 1 || percent > 100) failTo("/admin/promos", "Enter a percent from 1 to 100.")
+  const usageRaw = String(formData.get("usageLimit") ?? "").trim()
+  let usageLimit: number | null = null
+  if (usageRaw) {
+    const usage = Number(usageRaw)
+    if (!Number.isInteger(usage) || usage < 1) failTo("/admin/promos", "Enter a usage limit of at least 1, or leave it blank.")
+    usageLimit = usage
+  }
   const programmeId = String(formData.get("programmeId") ?? "") || null
-  await prisma.promoCode.create({
-    data: {
-      code,
-      discountType: "PERCENT",
-      percentOff: Math.min(100, percent),
-      programmeId,
-      usageLimit: Number(formData.get("usageLimit") ?? 0) || null,
-      isActive: true,
-    },
-  })
+  try {
+    await prisma.promoCode.create({
+      data: {
+        code,
+        discountType: "PERCENT",
+        percentOff: percent,
+        programmeId,
+        usageLimit,
+        isActive: true,
+      },
+    })
+  } catch (error) {
+    if (isUnique(error)) failTo("/admin/promos", "That code is already used.")
+    throw error
+  }
   revalidatePublic(["/admin/promos"])
+  noticeTo("/admin/promos", `${code} added. It takes ${percent}% off.`)
 }
 
 export async function togglePromo(formData: FormData) {
   if (!(await allow("catalogue"))) return
   const id = String(formData.get("id") ?? "")
   const promo = await prisma.promoCode.findUnique({ where: { id } })
-  if (!promo) return
-  await prisma.promoCode.update({ where: { id }, data: { isActive: !promo.isActive } })
+  if (!promo) failTo("/admin/promos", "That code was not found.")
+  const active = !promo.isActive
+  await prisma.promoCode.update({ where: { id }, data: { isActive: active } })
   revalidatePublic(["/admin/promos"])
+  noticeTo("/admin/promos", active ? `${promo.code} is active.` : `${promo.code} is paused.`)
 }
 
 export async function setOrderStatus(formData: FormData) {

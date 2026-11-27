@@ -8,13 +8,15 @@ import { BLOB_SETUP_MESSAGE, blobReady } from "@/lib/blob-upload"
 import { Notice } from "@/components/admin/notice"
 import { NameSlugFields } from "@/components/admin/name-slug-fields"
 
+export const instant = false
+
 export const metadata = { title: "Menu" }
 
 const KNOWN = ["spicy", "vegetarian"] as const
 
-export default async function MenuAdminPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
+export default async function MenuAdminPage({ searchParams }: { searchParams: Promise<{ notice?: string; error?: string }> }) {
   await requireSection("catalogue")
-  const { notice } = await searchParams
+  const { notice, error } = await searchParams
   const [categories, items, archived] = await Promise.all([
     prisma.category.findMany({ where: { archivedAt: null }, orderBy: [{ position: "asc" }, { name: "asc" }] }),
     prisma.menuItem.findMany({
@@ -37,9 +39,9 @@ export default async function MenuAdminPage({ searchParams }: { searchParams: Pr
     <div>
       <h1 className="font-heading text-4xl">Menu</h1>
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-        Add a dish, change its words and photo, or bring an archived dish back. Sizes and prices are saved on each dish. Checkout charges the price stored here.
+        Add a dish, change its words and photo, or bring an archived dish back. Prices are in naira, so 1500 and 1,500 are the same amount. Checkout charges the price stored here.
       </p>
-      <Notice notice={notice} />
+      <Notice notice={notice} error={error} />
       {uploads ? null : <p className="mt-4 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-foreground/10">{BLOB_SETUP_MESSAGE}</p>}
 
       <section className="mt-6 rounded-2xl bg-white p-4 ring-1 ring-foreground/10">
@@ -109,7 +111,7 @@ export default async function MenuAdminPage({ searchParams }: { searchParams: Pr
           </label>
           <label className="block text-sm">
             Price (₦)
-            <input name="naira" type="number" min={0} required defaultValue={0} className="mt-1 block h-11 w-full rounded-lg border border-border px-3" />
+            <input name="naira" inputMode="decimal" autoComplete="off" required defaultValue={0} placeholder="1,500" className="mt-1 block h-11 w-full rounded-lg border border-border px-3" />
           </label>
           <label className="block text-sm">
             Position
@@ -218,7 +220,7 @@ export default async function MenuAdminPage({ searchParams }: { searchParams: Pr
                       </label>
                       <label className="text-sm">
                         ₦
-                        <input name="naira" type="number" min={0} defaultValue={Math.round(variant.priceKobo / 100)} className="mt-1 block h-11 w-28 rounded-lg border border-border px-3" />
+                        <input name="naira" inputMode="decimal" autoComplete="off" required defaultValue={Math.round(variant.priceKobo / 100)} className="mt-1 block h-11 w-28 rounded-lg border border-border px-3" />
                       </label>
                       <label className="text-sm">
                         Order
@@ -252,7 +254,7 @@ export default async function MenuAdminPage({ searchParams }: { searchParams: Pr
                 </label>
                 <label className="text-sm">
                   ₦
-                  <input name="naira" type="number" min={0} required defaultValue={0} className="mt-1 block h-11 w-28 rounded-lg border border-border px-3" />
+                  <input name="naira" inputMode="decimal" autoComplete="off" required defaultValue={0} placeholder="1,500" className="mt-1 block h-11 w-28 rounded-lg border border-border px-3" />
                 </label>
                 <button type="submit" className="h-11 rounded-lg border border-border px-3 text-sm font-semibold">
                   Add size

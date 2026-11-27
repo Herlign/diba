@@ -4,6 +4,8 @@ import { requireSection } from "@/lib/admin/require"
 import { addStaff, resetStaffPassword, saveStaff, setStaffActive } from "@/lib/admin/staff-mutations"
 import { Notice } from "@/components/admin/notice"
 
+export const instant = false
+
 export const metadata = { title: "Team" }
 
 const ROLES = [
@@ -13,10 +15,10 @@ const ROLES = [
   ["DISPATCH", "Dispatch"],
 ] as const
 
-export default async function StaffPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
+export default async function StaffPage({ searchParams }: { searchParams: Promise<{ notice?: string; error?: string }> }) {
   const staff = await requireSection("catalogue")
   if (staff.role !== "SUPER_ADMIN") redirect("/admin")
-  const { notice } = await searchParams
+  const { notice, error } = await searchParams
   const people = await prisma.staffUser.findMany({ orderBy: [{ isActive: "desc" }, { name: "asc" }] })
 
   return (
@@ -25,7 +27,7 @@ export default async function StaffPage({ searchParams }: { searchParams: Promis
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
         Add someone, change what they can open, set a new password, or turn an account off. A turned-off account cannot sign in.
       </p>
-      <Notice notice={notice} />
+      <Notice notice={notice} error={error} />
 
       <form action={addStaff} className="mt-4 grid gap-3 rounded-2xl bg-white p-4 ring-1 ring-foreground/10 sm:grid-cols-2">
         <h2 className="font-heading text-2xl sm:col-span-2">Add someone</h2>

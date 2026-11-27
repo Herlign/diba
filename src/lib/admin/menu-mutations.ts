@@ -1,9 +1,10 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
-import { noticeTo, requireManager } from "@/lib/admin/guard"
+import { failTo, noticeTo, requireManager } from "@/lib/admin/guard"
 import { revalidatePublic } from "@/lib/admin/revalidate"
 import { photoFromForm } from "@/lib/blob-upload"
+import { parseNairaToKobo } from "@/lib/money"
 import { slugify } from "@/lib/slug"
 
 const KNOWN_TAGS = ["spicy", "vegetarian"] as const
@@ -22,12 +23,12 @@ export async function saveCategory(formData: FormData) {
   const id = String(formData.get("id") ?? "")
   const name = String(formData.get("name") ?? "").trim()
   const slug = slugify(String(formData.get("slug") ?? "") || name)
-  if (name.length < 2 || !slug) noticeTo("/admin/menu", "Give the category a name.")
+  if (name.length < 2 || !slug) failTo("/admin/menu", "Give the category a name.")
   const clash = await prisma.category.findUnique({ where: { slug } })
-  if (clash && clash.id !== id) noticeTo("/admin/menu", "That category link is already used.")
+  if (clash && clash.id !== id) failTo("/admin/menu", "That category link is already used.")
   if (id) {
     const current = await prisma.category.findUnique({ where: { id } })
-    if (!current) noticeTo("/admin/menu", "That category was not found.")
+    if (!current) failTo("/admin/menu", "That category was not found.")
     await prisma.category.update({ where: { id }, data: { name, slug } })
   } else {
     const last = await prisma.category.aggregate({ _max: { position: true } })
@@ -68,20 +69,20 @@ export async function saveDish(formData: FormData) {
   const categoryId = String(formData.get("categoryId") ?? "")
   const position = Number(formData.get("position") ?? 0)
   const slug = slugify(String(formData.get("slug") ?? "") || name)
-  if (name.length < 2) noticeTo("/admin/menu", "Give the dish a name.")
-  if (!slug) noticeTo("/admin/menu", "Give the dish a short link.")
-  if (description.length > 500) noticeTo("/admin/menu", "Keep the description under 500 characters.")
+  if (name.length < 2) failTo("/admin/menu", "Give the dish a name.")
+  if (!slug) failTo("/admin/menu", "Give the dish a short link.")
+  if (description.length > 500) failTo("/admin/menu", "Keep the description under 500 characters.")
   const category = await prisma.category.findUnique({ where: { id: categoryId } })
-  if (!category) noticeTo("/admin/menu", "Choose a category.")
+  if (!category) failTo("/admin/menu", "Choose a category.")
   const clash = await prisma.menuItem.findUnique({ where: { slug } })
-  if (clash && clash.id !== id) noticeTo("/admin/menu", "That link is already used. Change the short link.")
+  if (clash && clash.id !== id) failTo("/admin/menu", "That link is already used. Change the short link.")
   const dietaryTags = tagsFrom(formData)
   const photo = await photoFromForm(formData, `menu/${slug}`, String(formData.get("currentImage") ?? ""))
-  if (!photo.ok) noticeTo(id ? `/admin/menu#dish-${id}` : "/admin/menu", photo.error)
+  if (!photo.ok) failTo(id ? `/admin/menu#dish-${id}` : "/admin/menu", photo.error)
 
   if (id) {
     const current = await prisma.menuItem.findUnique({ where: { id } })
-    if (!current) noticeTo("/admin/menu", "That dish was not found.")
+    if (!current) failTo("/admin/menu", "That dish was not found.")
     await prisma.menuItem.update({
       where: { id },
       data: {
@@ -98,8 +99,8 @@ export async function saveDish(formData: FormData) {
     noticeTo(`/admin/menu#dish-${id}`, `Saved ${name}.${photo.notice}`)
   }
 
-  const naira = Number(formData.get("naira") ?? 0)
-  if (!Number.isFinite(naira) || naira < 0 || naira > 1_000_000) noticeTo("/admin/menu", "Enter a price in naira.")
+  const priceKobo = parseNairaToKobo(String(formData.get("naira") ?? ""))
+  if (priceKobo === null) failTo("/admin/menu", "Enter a price in naira, such as 1500 or 1,500.")
   const created = await prisma.menuItem.create({
     data: {
       name,
@@ -113,7 +114,7 @@ export async function saveDish(formData: FormData) {
       variants: {
         create: {
           name: "Regular",
-          priceKobo: Math.round(naira * 100),
+          priceKobo,
           position: 0,
           isAvailable: true,
         },
@@ -129,7 +130,7 @@ export async function restoreDish(formData: FormData) {
   await requireManager("/admin/menu")
   const id = String(formData.get("id") ?? "")
   const item = await prisma.menuItem.findUnique({ where: { id }, include: { category: true } })
-  if (!item) noticeTo("/admin/menu", "That dish was not found.")
+  if (!item) failTo("/admin/menu", "That dish was not found.")
   await prisma.menuItem.update({ where: { id }, data: { isActive: true, archivedAt: null } })
   if (item.category.archivedAt || !item.category.isActive) {
     await prisma.category.update({
