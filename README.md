@@ -72,7 +72,7 @@ Re-running `npx prisma db seed` wipes orders, attendees, staff, menu and program
 
 The manager edits dishes, categories, programmes, churches, venues and the homepage at `/admin`. That is the way to change the live site.
 
-`npm run content:update` is insert-only. It adds catalogue rows that are not in the database yet (for an empty database, or a dish that was added in `src/lib/catalogue.ts` and has never been saved). It does not change names, prices, photos, dates or status that were saved in admin, and it does not archive admin-created dishes or programmes. Staff accounts and orders are left alone.
+`npm run content:update` is insert-only. It adds catalogue rows that are not in the database yet, and website blocks only when that block has no rows. It does not change names, prices, photos, dates, homepage wording or status that were saved in admin, and it does not archive admin-created dishes or programmes. Staff accounts and orders are left alone.
 
 ```bash
 DATABASE_URL="postgresql://…" npm run content:update
@@ -93,7 +93,7 @@ The manager (the super admin) is the only person who can change the site. At `/a
 - Add and edit dishes, sizes, prices, categories and photos, and restore an archived dish (`/admin/menu`)
 - Create and edit programmes, days, meal times, capacity and which dishes are offered (`/admin/programmes`)
 - Add churches (`/admin/churches`) and venues with collection points (`/admin/venues`)
-- Edit the homepage title, paragraph, footer and questions (`/admin/content`)
+- Edit the public website: homepage, header, footer, programme list, photos and questions (`/admin/content`)
 - Add staff, change a role, set a new password, or turn an account off (`/admin/staff`)
 
 Turning an account off stops the next sign-in. A password change replaces the password; an open session stays until it ends. Keep at least one manager account. The manager cannot turn off their own account.
@@ -105,13 +105,13 @@ Production target is Vercel, with Postgres on Neon or Supabase. Paystack, Resend
 1. Create a Postgres database. Copy its connection string into `DATABASE_URL`. It must include `?sslmode=require` on Neon and Supabase.
 2. Push this repo to GitHub and import it in Vercel. Framework preset: Next.js. Set the env vars below in the Vercel project before the first build.
 3. `NEXT_PUBLIC_SITE_URL` must be the real `https://` origin. Vercel bakes `NEXT_PUBLIC_*` at build time, so change it and redeploy if the domain moves.
-4. The production build runs `prisma migrate deploy && next build`. Migrations are additive. On an empty database, run `npx prisma db seed` once, then replace the seed staff from `/admin/staff` and turn those accounts off. **Never run seed against a database that already has orders.** `npm run content:update` only inserts catalogue rows that are missing. It will not overwrite admin edits or archive dishes and programmes created in the admin. Homepage wording is stored in the database by the site-content migration, using the previous copy, so the public site looks the same until a manager edits it.
+4. The production build runs `prisma migrate deploy && next build`. Migrations are additive. On an empty database, run `npx prisma db seed` once, then replace the seed staff from `/admin/staff` and turn those accounts off. **Never run seed against a database that already has orders.** `npm run content:update` only inserts catalogue rows and website blocks that are missing. It will not overwrite admin edits or archive dishes and programmes created in the admin. Homepage wording is stored by migration, using the previous copy, so a saved headline is left as it is.
 5. Paystack: create live keys. Set `PAYMENTS_MODE=live`, `PAYSTACK_SECRET_KEY`, and `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`. In the Paystack dashboard set the webhook to `https://<domain>/api/paystack/webhook`. Paystack signs the raw body with HMAC SHA512. The handler rejects a bad signature and applies a successful charge only once, and only when the amount in kobo and the currency are NGN matching the order.
 6. Resend: verify the sending domain, then set `RESEND_API_KEY` and `EMAIL_FROM` to an address on that domain, such as `Diba Meals <orders@yourdomain>`. With no key, mail is printed to the server log and the magic link is shown on the page.
 7. Cron: call `GET https://<domain>/api/cron/release-holds` every 10 minutes with header `Authorization: Bearer <CRON_SECRET>`. Vercel Cron can hit that path. It cancels `PENDING_PAYMENT` orders older than 30 minutes so the seat is free. The seat count already ignores those holds. The cron just closes the rows.
 8. Google Maps: restrict `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` by HTTP referrer to the production domain. Keep `GOOGLE_MAPS_API_KEY` server-side. Places is for admin venue setup.
 9. Analytics is off until `NEXT_PUBLIC_GTM_ID` and/or `NEXT_PUBLIC_META_PIXEL_ID` are set. The app then sends `view_programme`, `add_to_cart`, `begin_checkout`, and `purchase`.
-10. Photos: in the Vercel project open Storage, create a public Blob store, and connect it to this project. That writes `BLOB_READ_WRITE_TOKEN`. Redeploy. Dish, programme and church photos are uploaded with `@vercel/blob` `put()` from the admin (JPG, PNG, WEBP or GIF, up to 5 MB) and saved on `MenuItem.imageUrl` (or the programme cover / church logo). `next/image` allows `*.public.blob.vercel-storage.com`.
+10. Photos: in the Vercel project open Storage, create a public Blob store, and connect it to this project. That writes `BLOB_READ_WRITE_TOKEN`. Redeploy. Dish, programme, church and website photos are uploaded with `@vercel/blob` `put()` from the admin (JPG, PNG, WEBP or GIF, up to 5 MB). `next/image` allows `*.public.blob.vercel-storage.com`.
 11. Rate limits, in memory per server instance: checkout 8 per phone per 10 minutes, magic links 5 per email per 10 minutes, staff login 8 per email per 10 minutes, pass scans 40 per staff member per 10 minutes. A multi-instance host does not share that counter. Put a shared store in front of it before a large launch.
 
 ### Launch checklist

@@ -29,6 +29,11 @@ const STAFF = [
 async function reset() {
   await prisma.$executeRawUnsafe(`
     TRUNCATE TABLE
+      "HomeTrustPoint",
+      "HomeMarqueeItem",
+      "HomeSlipLine",
+      "HomeShowcase",
+      "HomeStep",
       "FaqEntry",
       "SiteContent",
       "Payment",

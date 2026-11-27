@@ -2,8 +2,9 @@ import type { ReactNode } from "react"
 import type { Metadata } from "next"
 import { Fraunces, Outfit } from "next/font/google"
 import { AnalyticsScripts } from "@/components/analytics/scripts"
-import { SiteChrome } from "@/components/layout/site-chrome"
-import { getSiteContent } from "@/lib/site-content"
+import { SiteChrome, type SiteChromeCopy } from "@/components/layout/site-chrome"
+import { getSiteContent, type SiteCopy } from "@/lib/site-content"
+import { joinParts } from "@/lib/site-text"
 import "./globals.css"
 
 const outfit = Outfit({
@@ -18,28 +19,48 @@ const fraunces = Fraunces({
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://127.0.0.1:4317"
 
+function chromeFrom(content: SiteCopy): SiteChromeCopy {
+  return {
+    footer: content.footer,
+    footerNote: content.footerNote,
+    footerStaff: content.footerStaff,
+    footerWhatsapp: content.footerWhatsapp,
+    whatsappHref: `https://wa.me/${content.whatsappNumber}`,
+    photoCredit: content.photoCredit,
+    navProgrammes: content.navProgrammes,
+    navOrders: content.navOrders,
+    navCta: content.navCta,
+    logoUrl: content.logoUrl,
+    logoAlt: content.logoAlt,
+  }
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const content = await getSiteContent()
-  const description = `${content.headlineLead} ${content.headlineRest}. ${content.footer}`
-  const social = `${content.headlineLead} ${content.headlineRest}. Morning, afternoon and evening, delivered at the programme venue.`
+  const description = joinParts([content.headlineLead, content.headlineRest, content.footer])
+  const social = joinParts([content.headlineLead, content.headlineRest, content.socialExtra])
+  const shareImage = content.ogImageUrl ? [{ url: content.ogImageUrl, alt: content.ogImageAlt }] : undefined
   return {
     metadataBase: new URL(siteUrl),
     title: {
-      default: "Diba Meals",
-      template: "%s · Diba Meals",
+      default: content.siteName,
+      template: `%s · ${content.siteName}`,
     },
     description,
+    ...(content.faviconUrl ? { icons: { icon: content.faviconUrl, apple: content.faviconUrl } } : {}),
     openGraph: {
-      title: "Diba Meals",
+      title: content.siteName,
       description: social,
       locale: "en_NG",
       type: "website",
       url: siteUrl,
+      ...(shareImage ? { images: shareImage } : {}),
     },
     twitter: {
-      card: "summary",
-      title: "Diba Meals",
+      card: content.ogImageUrl ? "summary_large_image" : "summary",
+      title: content.siteName,
       description: social,
+      ...(content.ogImageUrl ? { images: [content.ogImageUrl] } : {}),
     },
   }
 }
@@ -59,7 +80,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           Skip to content
         </a>
         <AnalyticsScripts gtmId={process.env.NEXT_PUBLIC_GTM_ID} pixelId={process.env.NEXT_PUBLIC_META_PIXEL_ID} />
-        <SiteChrome footer={content.footer}>{children}</SiteChrome>
+        <SiteChrome chrome={chromeFrom(content)}>{children}</SiteChrome>
       </body>
     </html>
   )

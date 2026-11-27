@@ -12,7 +12,7 @@ const LINKS: { href: string; label: string; section: OpsSection; managerOnly?: b
   { href: "/admin/menu", label: "Menu", section: "catalogue" },
   { href: "/admin/churches", label: "Churches", section: "catalogue" },
   { href: "/admin/venues", label: "Venues", section: "catalogue" },
-  { href: "/admin/content", label: "Homepage", section: "catalogue", managerOnly: true },
+  { href: "/admin/content", label: "Website", section: "catalogue", managerOnly: true },
   { href: "/admin/staff", label: "Team", section: "catalogue", managerOnly: true },
   { href: "/admin/plans", label: "Plans", section: "catalogue" },
   { href: "/admin/promos", label: "Promos", section: "catalogue" },
