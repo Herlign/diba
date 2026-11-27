@@ -41,7 +41,7 @@ export function FoodImage({
       priority={priority}
       onError={() => setFailed(true)}
       className={cn("object-cover", className)}
-      style={{ objectPosition: photo.focus ?? "center" }}
+      style={{ objectPosition: photo.focus || "center" }}
     />
   )
 }

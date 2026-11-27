@@ -25,7 +25,15 @@ function coverPhoto(programme: ProgrammeCardData): FoodPhoto {
   }
 }
 
-export function ProgrammeCard({ programme }: { programme: ProgrammeCardData }) {
+export function ProgrammeCard({
+  programme,
+  orderLabel = "Order meals",
+  menuSoon = "Menu soon",
+}: {
+  programme: ProgrammeCardData
+  orderLabel?: string
+  menuSoon?: string
+}) {
   const photo = coverPhoto(programme)
   return (
     <article id={programme.slug} className="programme-card h-full scroll-mt-24">
@@ -60,13 +68,13 @@ export function ProgrammeCard({ programme }: { programme: ProgrammeCardData }) {
         </div>
         <div className="mt-auto flex items-center justify-between gap-3 border-t border-border px-4 py-3">
           <span className="font-heading text-2xl text-palm">
-            {programme.fromKobo === null ? "Menu soon" : formatNaira(programme.fromKobo)}
+            {programme.fromKobo === null ? menuSoon : formatNaira(programme.fromKobo)}
           </span>
           <Link
             href={`/p/${programme.slug}`}
             className="inline-flex h-11 min-w-11 items-center rounded-lg bg-palm px-4 text-sm font-semibold text-cream"
           >
-            Order meals
+            {orderLabel}
           </Link>
         </div>
       </div>

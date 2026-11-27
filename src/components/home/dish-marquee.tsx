@@ -1,16 +1,6 @@
-const dishes = [
-  "Party jollof",
-  "Ofada & ayamase",
-  "Suya rice",
-  "Moi-moi",
-  "Shawarma",
-  "Yamarita",
-  "Sweet plantain",
-  "Basmati rice",
-]
-
-export function DishMarquee() {
-  const loop = [...dishes, ...dishes]
+export function DishMarquee({ labels }: { labels: string[] }) {
+  if (labels.length === 0) return null
+  const loop = [...labels, ...labels]
   return (
     <div className="marquee border-y border-gold/40 bg-gold text-ink" aria-hidden="true">
       <div className="marquee-track items-center py-3">

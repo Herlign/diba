@@ -428,7 +428,7 @@ model StaffUser {
   deliveries OrderSlot[]
 }
 
-/// Homepage copy the manager can edit. One row. Missing row falls back to the original wording.
+/// Public website copy. One row. Added columns default to the previous hard-coded words.
 model SiteContent {
   id           String   @id @default("site")
   eyebrow      String
@@ -436,10 +436,143 @@ model SiteContent {
   headlineRest String
   hero         String
   footer       String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
 
-  faqs FaqEntry[]
+  searchLabel       String @default("Find your programme")
+  searchPlaceholder String @default("Find your programme — church, name or code")
+  searchButton      String @default("Search")
+  heroImageUrl      String @default("/images/jollof.jpg")
+  heroImageAlt      String @default("Party jollof rice with grilled chicken skewers and fried fish")
+  slipTitle         String @default("Reboot Camp · Surulere")
+  platesHeading     String @default("Freshly prepared")
+  platesIntro       String @default("Choose a slot, choose a plate, and collect it at a designated point inside the venue. Extras can be added to any slot.")
+  programmesHeading String @default("Upcoming programmes")
+  programmesIntro   String @default("Published programmes only. Drafts stay in the office until the church is ready.")
+  programmesLink    String @default("All programmes")
+  statProgrammes    String @default("Programmes")
+  statChurches      String @default("Churches")
+  programmesEmptyTitle String @default("Nothing is published yet")
+  programmesEmptyBody  String @default("When a church opens a programme, it will land here.")
+  programmesErrorTitle String @default("The board didn't load")
+  programmesErrorBody  String @default("Give it a second and refresh. A fresh checkout still needs the database seeded.")
+  faqHeading        String @default("Before you order")
+  navProgrammes     String @default("Programmes")
+  navOrders         String @default("My orders")
+  navCta            String @default("Open lists")
+  logoAlt           String @default("Diba Meals")
+  logoUrl           String?
+  footerNote        String @default("Orders close 24 hours before each slot.")
+  footerStaff       String @default("Staff")
+  footerWhatsapp    String @default("WhatsApp support")
+  whatsappE164      String @default("")
+  photoCredit       String @default("Food photos, free to use, from Pexels: Keesha's Kitchen · Harrun Muhammad · Tim Yisa · PICHA · mk_photoz · Teguh S · kandhi bharata.")
+  boardEyebrow      String @default("The board")
+  boardTitle        String @default("Find your programme")
+  boardIntro        String @default("Search by church, programme name, or the code on the poster. Ordering closes 24 hours before each slot.")
+  boardPlaceholder  String @default("Church, programme name, or code")
+  boardSearch       String @default("Search")
+  boardClear        String @default("Clear")
+  boardEmptyTitle   String @default("No programme matches that")
+  boardEmptyBody    String @default("Try the code on the church poster, or clear the search.")
+  boardMetaDescription String @default("Find a church programme by name or code and see where Diba Meals is delivering.")
+  boardShareDescription String @default("Camps, congresses and convocations taking meal orders.")
+  orderButton       String @default("Order meals")
+  menuSoon          String @default("Menu soon")
+  missingEyebrow    String @default("Missing page")
+  missingTitle      String @default("That page is not on the menu")
+  missingBody       String @default("The link may be old. The programme list is the place to start.")
+  missingButton     String @default("Browse programmes")
+  ordersEyebrow     String @default("My orders")
+  ordersTitle       String @default("Find the meals you booked")
+  ordersBody        String @default("Use the email from checkout. We'll send a link that opens every order on that address. It lasts 2 hours.")
+  ordersEmailLabel  String @default("Email")
+  ordersButton      String @default("Email me a link")
+  ordersSending     String @default("Sending…")
+  siteName          String @default("Diba Meals")
+  socialExtra       String @default("Morning, afternoon and evening, delivered at the programme venue.")
+  ogImageAlt        String @default("Diba Meals")
+  ogImageUrl        String?
+  faviconUrl        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  faqs          FaqEntry[]
+  steps         HomeStep[]
+  showcases     HomeShowcase[]
+  slipLines     HomeSlipLine[]
+  marqueeItems  HomeMarqueeItem[]
+  trustPoints   HomeTrustPoint[]
+}
+
+/// Numbered step on the homepage. The number follows the position.
+model HomeStep {
+  id        String      @id @default(cuid())
+  siteId    String      @default("site")
+  site      SiteContent @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  position  Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([siteId, position])
+}
+
+/// A plate card in the Freshly prepared section.
+model HomeShowcase {
+  id         String      @id @default(cuid())
+  siteId     String      @default("site")
+  site       SiteContent @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  name       String
+  note       String
+  imageUrl   String
+  imageAlt   String
+  imageFocus String      @default("")
+  position   Int         @default(0)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@index([siteId, position])
+}
+
+/// One line on the gold sample-order card over the homepage photo.
+model HomeSlipLine {
+  id        String      @id @default(cuid())
+  siteId    String      @default("site")
+  site      SiteContent @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  whenLabel String
+  plate     String
+  position  Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([siteId, position])
+}
+
+/// A name in the scrolling gold band.
+model HomeMarqueeItem {
+  id        String      @id @default(cuid())
+  siteId    String      @default("site")
+  site      SiteContent @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  label     String
+  position  Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([siteId, position])
+}
+
+/// A short line under the homepage search box.
+model HomeTrustPoint {
+  id        String      @id @default(cuid())
+  siteId    String      @default("site")
+  site      SiteContent @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  label     String
+  position  Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([siteId, position])
 }
 
 model FaqEntry {
