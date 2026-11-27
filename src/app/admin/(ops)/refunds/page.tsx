@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { requireSection } from "@/lib/admin/require"
 import { decideRefund } from "@/lib/admin/mutations"
 
+export const instant = false
+
 export const metadata = { title: "Refund requests" }
 
 export default async function RefundsPage() {

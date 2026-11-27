@@ -6,6 +6,8 @@ import { formatDayLabel, formatWindow } from "@/lib/dates"
 import { requireSection } from "@/lib/admin/require"
 import { setOrderStatus } from "@/lib/admin/mutations"
 
+export const instant = false
+
 export const metadata = { title: "Order" }
 
 export default async function OrderAdminPage({ params }: { params: Promise<{ reference: string }> }) {

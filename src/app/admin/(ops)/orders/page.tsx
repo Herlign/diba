@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { formatNaira } from "@/lib/money"
 import { requireSection } from "@/lib/admin/require"
 
+export const instant = false
+
 export const metadata = { title: "Orders" }
 
 export default async function OrdersPage({

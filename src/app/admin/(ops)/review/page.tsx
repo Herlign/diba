@@ -4,6 +4,8 @@ import { formatNaira } from "@/lib/money"
 import { requireSection } from "@/lib/admin/require"
 import { clearReview } from "@/lib/admin/mutations"
 
+export const instant = false
+
 export const metadata = { title: "Needs review" }
 
 export default async function ReviewQueuePage() {

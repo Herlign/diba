@@ -3,14 +3,16 @@
 import { prisma } from "@/lib/prisma"
 import { DEFAULT_SLOT_CAPACITY, SERVICE_WINDOWS } from "@/lib/catalogue"
 import { eachDay, isoDate, utcDate } from "@/lib/calendar"
-import { noticeTo, requireManager } from "@/lib/admin/guard"
+import { failTo, noticeTo, requireManager } from "@/lib/admin/guard"
+import { parseClock } from "@/lib/dates"
+import { parseNairaToKobo } from "@/lib/money"
 import { revalidatePublic } from "@/lib/admin/revalidate"
 import { photoFromForm } from "@/lib/blob-upload"
 import { cutoffInstant, deliveryStartFromKey } from "@/lib/ordering/rules"
 import { programmeCode, slugify } from "@/lib/slug"
 
 const STATUSES = ["DRAFT", "PUBLISHED", "CLOSED", "ARCHIVED"] as const
-const CLOCK = /^([01]\d|2[0-3]):[0-5]\d$/
+const PRICE_ERROR = "Enter the special price in naira, such as 1500 or 1,500, or leave it blank to use the menu price."
 
 function touch(id: string, slug: string, code: string) {
   revalidatePublic([`/p/${slug}`, `/c/${code}`, "/admin/programmes", `/admin/programmes/${id}`])
@@ -48,14 +50,14 @@ export async function saveProgramme(formData: FormData) {
   const status = String(formData.get("status") ?? "DRAFT")
   const cutoff = cutoffHoursOf(formData.get("cutoff"))
   const back = id ? `/admin/programmes/${id}` : "/admin/programmes/new"
-  if (title.length < 2) noticeTo(back, "Give the programme a name.")
-  if (!slug) noticeTo(back, "Give the programme a short link.")
-  if (code.length < 3) noticeTo(back, "The short code needs 3 to 16 letters or numbers, like REBOOT26.")
-  if (description.length < 10 || description.length > 2000) noticeTo(back, "Add a short description of the programme.")
-  if (!STATUSES.includes(status as (typeof STATUSES)[number])) noticeTo(back, "Choose a status.")
+  if (title.length < 2) failTo(back, "Give the programme a name.")
+  if (!slug) failTo(back, "Give the programme a short link.")
+  if (code.length < 3) failTo(back, "The short code needs 3 to 16 letters or numbers, like REBOOT26.")
+  if (description.length < 10 || description.length > 2000) failTo(back, "Add a short description of the programme.")
+  if (!STATUSES.includes(status as (typeof STATUSES)[number])) failTo(back, "Choose a status.")
   const range = { start: utcDate(startKey), end: utcDate(endKey), days: eachDay(startKey, endKey) }
   if (!range.start || !range.end || range.days.length === 0) {
-    noticeTo(back, "Choose a start and end date, at most 31 days apart.")
+    failTo(back, "Choose a start and end date, at most 31 days apart.")
   }
   const [church, venue, slugClash, codeClash] = await Promise.all([
     prisma.church.findUnique({ where: { id: churchId } }),
@@ -63,19 +65,19 @@ export async function saveProgramme(formData: FormData) {
     prisma.programme.findUnique({ where: { slug } }),
     prisma.programme.findUnique({ where: { code } }),
   ])
-  if (!church) noticeTo(back, "Choose a church.")
-  if (!venue) noticeTo(back, "Choose a venue.")
-  if (slugClash && slugClash.id !== id) noticeTo(back, "That link is already used.")
-  if (codeClash && codeClash.id !== id) noticeTo(back, "That short code is already used.")
+  if (!church) failTo(back, "Choose a church.")
+  if (!venue) failTo(back, "Choose a venue.")
+  if (slugClash && slugClash.id !== id) failTo(back, "That link is already used.")
+  if (codeClash && codeClash.id !== id) failTo(back, "That short code is already used.")
   const photo = await photoFromForm(formData, `programmes/${slug}`, String(formData.get("currentImage") ?? ""))
-  if (!photo.ok) noticeTo(back, photo.error)
+  if (!photo.ok) failTo(back, photo.error)
 
   if (!id) {
     const periodNames = formData
       .getAll("periods")
       .map((value) => String(value))
       .filter((name) => SERVICE_WINDOWS.some((window) => window.name === name))
-    if (periodNames.length === 0) noticeTo(back, "Choose at least one meal time.")
+    if (periodNames.length === 0) failTo(back, "Choose at least one meal time.")
     const programme = await prisma.programme.create({
       data: {
         churchId,
@@ -142,7 +144,7 @@ export async function saveProgramme(formData: FormData) {
     where: { id },
     include: { slots: { include: { _count: { select: { orderSlots: true } } } }, mealPeriods: true },
   })
-  if (!current) noticeTo("/admin/programmes", "That programme was not found.")
+  if (!current) failTo("/admin/programmes", "That programme was not found.")
   const wanted = new Set(range.days)
   let closedDays = 0
   for (const slot of current.slots) {
@@ -204,16 +206,16 @@ export async function addDay(formData: FormData) {
   const day = String(formData.get("date") ?? "")
   const back = `/admin/programmes/${programmeId}`
   const date = utcDate(day)
-  if (!date) noticeTo(back, "Choose a date.")
+  if (!date) failTo(back, "Choose a date.")
   const programme = await prisma.programme.findUnique({
     where: { id: programmeId },
     include: { mealPeriods: true },
   })
-  if (!programme) noticeTo("/admin/programmes", "That programme was not found.")
-  if (programme.mealPeriods.length === 0) noticeTo(back, "Add a meal time first.")
+  if (!programme) failTo("/admin/programmes", "That programme was not found.")
+  if (programme.mealPeriods.length === 0) failTo(back, "Add a meal time first.")
   const start = date < programme.startDate ? date : programme.startDate
   const end = date > programme.endDate ? date : programme.endDate
-  if (eachDay(isoDate(start), isoDate(end)).length === 0) noticeTo(back, "Keep a programme within 31 days.")
+  if (eachDay(isoDate(start), isoDate(end)).length === 0) failTo(back, "Keep a programme within 31 days.")
   await prisma.programme.update({ where: { id: programmeId }, data: { startDate: start, endDate: end } })
   for (const period of programme.mealPeriods) {
     const cutoffAt = cutoffInstant(deliveryStartFromKey(day, period.deliveryWindowStart), programme.orderCutoffHours)
@@ -245,13 +247,13 @@ export async function removeDay(formData: FormData) {
   const day = String(formData.get("date") ?? "")
   const back = `/admin/programmes/${programmeId}`
   const programme = await prisma.programme.findUnique({ where: { id: programmeId } })
-  if (!programme) noticeTo("/admin/programmes", "That programme was not found.")
+  if (!programme) failTo("/admin/programmes", "That programme was not found.")
   const slots = await prisma.mealSlot.findMany({
     where: { programmeId },
     include: { _count: { select: { orderSlots: true } } },
   })
   const onDay = slots.filter((slot) => isoDate(slot.date) === day)
-  if (onDay.length === 0) noticeTo(back, "That day is not on this programme.")
+  if (onDay.length === 0) failTo(back, "That day is not on this programme.")
   let closed = false
   for (const slot of onDay) {
     if (slot._count.orderSlots > 0) {
@@ -281,13 +283,13 @@ export async function addPeriod(formData: FormData) {
   const name = String(formData.get("name") ?? "")
   const back = `/admin/programmes/${programmeId}`
   const window = SERVICE_WINDOWS.find((item) => item.name === name)
-  if (!window) noticeTo(back, "Choose morning, afternoon or evening.")
+  if (!window) failTo(back, "Choose morning, afternoon or evening.")
   const programme = await prisma.programme.findUnique({
     where: { id: programmeId },
     include: { mealPeriods: true, slots: { select: { date: true } } },
   })
-  if (!programme) noticeTo("/admin/programmes", "That programme was not found.")
-  if (programme.mealPeriods.some((period) => period.name === window.name)) noticeTo(back, `${window.name} is already on this programme.`)
+  if (!programme) failTo("/admin/programmes", "That programme was not found.")
+  if (programme.mealPeriods.some((period) => period.name === window.name)) failTo(back, `${window.name} is already on this programme.`)
   const period = await prisma.mealPeriod.create({
     data: {
       programmeId,
@@ -320,10 +322,10 @@ export async function removePeriod(formData: FormData) {
   await requireManager("/admin/programmes")
   const id = String(formData.get("id") ?? "")
   const period = await prisma.mealPeriod.findUnique({ where: { id }, include: { programme: true } })
-  if (!period) noticeTo("/admin/programmes", "That meal time was not found.")
+  if (!period) failTo("/admin/programmes", "That meal time was not found.")
   const back = `/admin/programmes/${period.programmeId}`
   const orders = await prisma.orderSlot.count({ where: { mealSlot: { mealPeriodId: id } } })
-  if (orders > 0) noticeTo(back, "That meal time already has orders, so it stays. Close the slots instead.")
+  if (orders > 0) failTo(back, "That meal time already has orders, so it stays. Close the slots instead.")
   await prisma.programmeMenuItemPeriod.deleteMany({ where: { mealPeriodId: id } })
   await prisma.mealPlanPeriod.deleteMany({ where: { mealPeriodId: id } })
   await prisma.mealSlot.deleteMany({ where: { mealPeriodId: id } })
@@ -335,13 +337,13 @@ export async function removePeriod(formData: FormData) {
 export async function savePeriod(formData: FormData) {
   await requireManager("/admin/programmes")
   const id = String(formData.get("id") ?? "")
-  const start = String(formData.get("start") ?? "")
-  const end = String(formData.get("end") ?? "")
+  const start = parseClock(String(formData.get("start") ?? ""))
+  const end = parseClock(String(formData.get("end") ?? ""))
   const period = await prisma.mealPeriod.findUnique({ where: { id }, include: { programme: true } })
-  if (!period) noticeTo("/admin/programmes", "That meal time was not found.")
+  if (!period) failTo("/admin/programmes", "That meal time was not found.")
   const back = `/admin/programmes/${period.programmeId}`
-  if (!CLOCK.test(start) || !CLOCK.test(end) || start >= end) {
-    noticeTo(back, "The delivery window needs a start and a later end.")
+  if (!start || !end || start >= end) {
+    failTo(back, "The delivery window needs a start and a later end, such as 07:00 to 10:00.")
   }
   await prisma.mealPeriod.update({
     where: { id },
@@ -357,11 +359,15 @@ export async function saveOfferings(formData: FormData) {
   const programmeId = String(formData.get("programmeId") ?? "")
   const back = `/admin/programmes/${programmeId}`
   const programme = await prisma.programme.findUnique({ where: { id: programmeId } })
-  if (!programme) noticeTo("/admin/programmes", "That programme was not found.")
+  if (!programme) failTo("/admin/programmes", "That programme was not found.")
   const allowedPeriods = new Set(
     (await prisma.mealPeriod.findMany({ where: { programmeId }, select: { id: true } })).map((period) => period.id),
   )
   const variantIds = formData.getAll("variantId").map((value) => String(value))
+  for (const variantId of variantIds) {
+    const priceRaw = String(formData.get(`price-${variantId}`) ?? "").trim()
+    if (priceRaw && parseNairaToKobo(priceRaw) === null) failTo(back, PRICE_ERROR)
+  }
   for (const variantId of variantIds) {
     const variant = await prisma.menuItemVariant.findUnique({ where: { id: variantId } })
     if (!variant) continue
@@ -371,8 +377,7 @@ export async function saveOfferings(formData: FormData) {
       .filter((periodId) => allowedPeriods.has(periodId))
     const offered = formData.get(`offered-${variantId}`) === "on" && periodIds.length > 0
     const priceRaw = String(formData.get(`price-${variantId}`) ?? "").trim()
-    const priceKoboOverride = priceRaw === "" ? null : Math.max(0, Math.round(Number(priceRaw) * 100))
-    if (priceRaw !== "" && !Number.isFinite(Number(priceRaw))) continue
+    const priceKoboOverride = priceRaw === "" ? null : parseNairaToKobo(priceRaw)
     const existing = await prisma.programmeMenuItem.findUnique({
       where: { programmeId_variantId: { programmeId, variantId } },
     })

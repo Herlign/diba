@@ -13,6 +13,8 @@ import { BLOB_SETUP_MESSAGE, blobReady } from "@/lib/blob-upload"
 import { Notice } from "@/components/admin/notice"
 import { NameSlugFields } from "@/components/admin/name-slug-fields"
 
+export const instant = false
+
 export const metadata = { title: "Programme" }
 
 const STATUSES = [
@@ -27,11 +29,11 @@ export default async function ProgrammeAdminPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ notice?: string }>
+  searchParams: Promise<{ notice?: string; error?: string }>
 }) {
   await requireSection("catalogue")
   const { id } = await params
-  const { notice } = await searchParams
+  const { notice, error } = await searchParams
   const programme = await prisma.programme.findUnique({
     where: { id },
     include: {
@@ -84,7 +86,7 @@ export default async function ProgrammeAdminPage({
         <h1 className="mt-2 font-heading text-4xl">{programme.title}</h1>
         <p className="text-sm text-muted-foreground">{share}</p>
       </div>
-      <Notice notice={notice} />
+      <Notice notice={notice} error={error} />
       {blobReady() ? null : <p className="rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-foreground/10">{BLOB_SETUP_MESSAGE}</p>}
       {activePoint ? null : (
         <p className="rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-foreground/10">
@@ -259,7 +261,7 @@ export default async function ProgrammeAdminPage({
 
       <section className="space-y-3">
         <h2 className="font-heading text-2xl">Dishes on this programme</h2>
-        <p className="text-sm text-muted-foreground">Tick a size, then tick the meal times it can be ordered in. Leave the special price blank to use the menu price.</p>
+        <p className="text-sm text-muted-foreground">Tick a size, then tick the meal times it can be ordered in. Leave the special price blank to use the menu price. 1500 and 1,500 are the same amount.</p>
         {categories.map((category) => (
           <details key={category.id} className="rounded-2xl bg-white p-4 ring-1 ring-foreground/10" open>
             <summary className="cursor-pointer font-heading text-2xl">{category.name}</summary>
@@ -292,8 +294,8 @@ export default async function ProgrammeAdminPage({
                               Special price ₦
                               <input
                                 name={`price-${variant.id}`}
-                                type="number"
-                                min={0}
+                                inputMode="decimal"
+                                autoComplete="off"
                                 placeholder={String(Math.round(variant.priceKobo / 100))}
                                 defaultValue={offering?.priceKoboOverride != null ? Math.round(offering.priceKoboOverride / 100) : ""}
                                 className="ml-2 h-11 w-28 rounded-lg border border-border px-3"

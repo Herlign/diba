@@ -5,6 +5,8 @@ import { prepSheet } from "@/lib/kitchen/prep"
 import { orderLineLabel } from "@/lib/ordering/line-label"
 import { PrintButton } from "@/components/admin/print-button"
 
+export const instant = false
+
 export const metadata = { title: "Kitchen sheet" }
 
 const PAID = ["PAID", "PARTIALLY_FULFILLED", "FULFILLED"] as const

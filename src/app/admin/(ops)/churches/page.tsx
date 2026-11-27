@@ -5,11 +5,13 @@ import { BLOB_SETUP_MESSAGE, blobReady } from "@/lib/blob-upload"
 import { Notice } from "@/components/admin/notice"
 import { NameSlugFields } from "@/components/admin/name-slug-fields"
 
+export const instant = false
+
 export const metadata = { title: "Churches" }
 
-export default async function ChurchesPage({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
+export default async function ChurchesPage({ searchParams }: { searchParams: Promise<{ notice?: string; error?: string }> }) {
   await requireSection("catalogue")
-  const { notice } = await searchParams
+  const { notice, error } = await searchParams
   const churches = await prisma.church.findMany({ orderBy: { name: "asc" }, include: { _count: { select: { programmes: true } } } })
   return (
     <div>
@@ -17,7 +19,7 @@ export default async function ChurchesPage({ searchParams }: { searchParams: Pro
       <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
         A programme belongs to a church. Hiding a church keeps its existing programmes, and stops it appearing on new ones.
       </p>
-      <Notice notice={notice} />
+      <Notice notice={notice} error={error} />
       {blobReady() ? null : <p className="mt-4 rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-foreground/10">{BLOB_SETUP_MESSAGE}</p>}
 
       <form action={saveChurch} className="mt-4 grid gap-3 rounded-2xl bg-white p-4 ring-1 ring-foreground/10 sm:grid-cols-2">

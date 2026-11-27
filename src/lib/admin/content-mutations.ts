@@ -1,7 +1,7 @@
 "use server"
 
 import { prisma } from "@/lib/prisma"
-import { noticeTo, requireManager } from "@/lib/admin/guard"
+import { failTo, noticeTo, requireManager } from "@/lib/admin/guard"
 import { revalidateContent } from "@/lib/admin/revalidate"
 import { SITE_ID } from "@/lib/site-copy"
 
@@ -13,12 +13,12 @@ export async function saveSiteContent(formData: FormData) {
   const hero = String(formData.get("hero") ?? "").trim()
   const footer = String(formData.get("footer") ?? "").trim()
   if (!eyebrow || !headlineLead || !headlineRest || !hero || !footer) {
-    noticeTo("/admin/content", "Fill in every homepage line.")
+    failTo("/admin/content", "Fill in every homepage line.")
   }
   if (eyebrow.length > 120 || headlineLead.length > 80 || headlineRest.length > 80) {
-    noticeTo("/admin/content", "Shorten the title lines.")
+    failTo("/admin/content", "Shorten the title lines.")
   }
-  if (hero.length > 800 || footer.length > 300) noticeTo("/admin/content", "Shorten the paragraph or the footer line.")
+  if (hero.length > 800 || footer.length > 300) failTo("/admin/content", "Shorten the paragraph or the footer line.")
 
   const ids = formData.getAll("faqId").map((value) => String(value))
   const questions = formData.getAll("question").map((value) => String(value).trim())
@@ -30,12 +30,12 @@ export async function saveSiteContent(formData: FormData) {
     answer: answers[index] ?? "",
   }))
   if (rows.some((row) => (row.question && !row.answer) || (!row.question && row.answer))) {
-    noticeTo("/admin/content", "Each question needs an answer.")
+    failTo("/admin/content", "Each question needs an answer.")
   }
   const faqs = rows.filter((row) => row.question && row.answer && !dropped.has(row.id))
-  if (faqs.length === 0) noticeTo("/admin/content", "Keep at least one question.")
+  if (faqs.length === 0) failTo("/admin/content", "Keep at least one question.")
   if (faqs.some((faq) => faq.question.length > 160 || faq.answer.length > 800)) {
-    noticeTo("/admin/content", "Shorten a question or answer.")
+    failTo("/admin/content", "Shorten a question or answer.")
   }
 
   await prisma.$transaction(async (tx) => {
