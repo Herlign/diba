@@ -1,4 +1,22 @@
 /** Prices are stored as integer kobo. Display is whole naira. */
+export function koboToNaira(kobo: number): number {
+  if (!Number.isSafeInteger(kobo) || kobo < 0) {
+    throw new Error("Amount must be a whole number of kobo.")
+  }
+  const whole = Math.trunc(kobo / 100)
+  const fraction = String(kobo % 100).padStart(2, "0")
+  return Number(`${whole}.${fraction}`)
+}
+
+/** Payaza reports naira. Convert a 2-decimal figure back to integer kobo. */
+export function nairaToKobo(naira: number): number {
+  if (!Number.isFinite(naira) || naira < 0) {
+    throw new Error("Amount must be a naira figure.")
+  }
+  const [whole, fraction = "00"] = naira.toFixed(2).split(".")
+  return Number(whole) * 100 + Number(fraction)
+}
+
 export function formatNaira(kobo: number): string {
   const naira = Math.round(kobo / 100)
   const formatted = new Intl.NumberFormat("en-NG", {

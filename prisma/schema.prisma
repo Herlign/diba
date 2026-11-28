@@ -329,6 +329,7 @@ model Order {
   dietaryNotes      String      @default("")
   mealPlanId        String?
   mealPlan          MealPlan?   @relation(fields: [mealPlanId], references: [id])
+  /// Merchant payment reference. The column name is historical; Payaza stores the checkout reference here.
   paystackReference String?     @unique
   needsReview       Boolean     @default(false)
   isGroupOrder      Boolean     @default(false)
@@ -387,7 +388,8 @@ model Payment {
   id         String        @id @default(cuid())
   orderId    String        @unique
   order      Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  provider   String        @default("PAYSTACK")
+  /// PAYAZA for card checkout, MOCK for the demo payment. Older rows may still say PAYSTACK.
+  provider   String        @default("PAYAZA")
   reference  String        @unique
   amountKobo Int
   currency   String        @default("NGN")

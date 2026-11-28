@@ -2,9 +2,9 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useCart, useCartHydrated } from "@/lib/cart/store"
-import { formatNaira } from "@/lib/money"
+import { formatNaira, koboToNaira } from "@/lib/money"
 import { confirmMockPayment, placeOrder, verifyPayment } from "@/lib/checkout/actions"
 import { quoteProgrammeCart, type CartQuote } from "@/lib/ordering/quote"
 import { track } from "@/lib/analytics"
@@ -22,9 +22,14 @@ type Programme = {
 type Sheet = {
   mode: "mock" | "live"
   reference: string
+  orderId: string
   totalKobo: number
   email: string
+  firstName: string
+  lastName: string
+  phone: string
   publicKey: string | null
+  connectionMode: "Test" | "Live"
   href: string
 }
 
@@ -244,6 +249,7 @@ function PaymentSheet({
 }) {
   const router = useRouter()
   const [error, setError] = useState("")
+  const completed = useRef(false)
 
   async function payMock() {
     setPaying(true)
@@ -260,16 +266,34 @@ function PaymentSheet({
   async function payLive() {
     setPaying(true)
     setError("")
+    completed.current = false
     try {
-      if (!sheet.publicKey) throw new Error("The Paystack public key is missing.")
-      await loadPaystack()
+      if (!sheet.publicKey) throw new Error("The Payaza public key is missing.")
+      const { default: PayazaCheckout } = await import("payaza-web-sdk")
       const token = tokenFromLocation()
-      const popup = window.PaystackPop?.setup({
-        key: sheet.publicKey,
-        email: sheet.email,
-        amount: sheet.totalKobo,
-        ref: sheet.reference,
-        callback: () => {
+      // Published types omit additional_details. The SDK still forwards every field to checkout.
+      const checkout = new PayazaCheckout({
+        merchant_key: sheet.publicKey,
+        connection_mode: sheet.connectionMode as import("payaza-web-sdk/lib/PayazaCheckout").ConnectionMode,
+        checkout_amount: Number(koboToNaira(sheet.totalKobo)),
+        currency_code: "NGN",
+        currency: "NGN",
+        email_address: sheet.email,
+        first_name: sheet.firstName,
+        last_name: sheet.lastName,
+        phone_number: sheet.phone,
+        transaction_reference: sheet.reference,
+        additional_details: { order_id: sheet.orderId },
+        virtual_account_configuration: { expires_in_minutes: 30 },
+        callback: (response: object) => {
+          completed.current = true
+          const type = "type" in response ? String(response.type) : ""
+          if (type && type !== "success") {
+            setPaying(false)
+            setError("Payment was not completed. Try again.")
+            return
+          }
+          setError("")
           void verifyPayment(sheet.reference, token).then((result) => {
             setPaying(false)
             if (!result.ok) {
@@ -279,32 +303,44 @@ function PaymentSheet({
             router.push(result.href)
           })
         },
-        onClose: () => setPaying(false),
-      })
-      popup?.openIframe()
+        onClose: () => {
+          // The modal also closes after a successful callback. Give that message a moment to land.
+          window.setTimeout(() => {
+            if (completed.current) return
+            completed.current = true
+            setPaying(false)
+            setError("Payment was not completed. Try again.")
+          }, 300)
+        },
+      } as ConstructorParameters<typeof PayazaCheckout>[0])
+      checkout.showPopup()
     } catch (cause) {
       setPaying(false)
-      setError(cause instanceof Error ? cause.message : "Paystack didn't open.")
+      setError(cause instanceof Error ? cause.message : "Payaza didn't open.")
     }
   }
 
   return (
     <section className="mt-8 rounded-2xl bg-white p-5 ring-1 ring-foreground/10">
       <p className="text-sm font-semibold tracking-wide text-palm uppercase">
-        {sheet.mode === "mock" ? "Mock payment" : "Paystack"}
+        {sheet.mode === "mock" ? "Mock payment" : "Payaza"}
       </p>
       <h2 className="mt-2 font-heading text-3xl">{formatNaira(sheet.totalKobo)}</h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        Reference {sheet.reference}. {sheet.mode === "mock" ? "No card is charged on this preview." : "Paystack opens next. The webhook confirms the payment."}
+        Reference {sheet.reference}. {sheet.mode === "mock" ? "No card is charged on this preview." : "Payaza opens next. We confirm the payment on our server before this order is marked paid."}
       </p>
-      {error ? <p className="mt-3 text-sm text-tomato">{error}</p> : null}
+      {error ? (
+        <p className="mt-3 text-sm text-tomato" role="alert">
+          {error}
+        </p>
+      ) : null}
       <button
         type="button"
         disabled={paying}
         onClick={() => void (sheet.mode === "mock" ? payMock() : payLive())}
         className="mt-4 inline-flex h-12 items-center rounded-lg bg-gold px-5 text-sm font-semibold text-ink disabled:opacity-40"
       >
-        {paying ? "Checking payment…" : sheet.mode === "mock" ? "Mark as paid" : "Pay with Paystack"}
+        {paying ? "Checking payment…" : sheet.mode === "mock" ? "Mark as paid" : "Pay with Payaza"}
       </button>
     </section>
   )
@@ -312,34 +348,4 @@ function PaymentSheet({
 
 function tokenFromLocation() {
   return new URLSearchParams(window.location.search).get("token") ?? ""
-}
-
-function loadPaystack() {
-  return new Promise<void>((resolve, reject) => {
-    if (window.PaystackPop) {
-      resolve()
-      return
-    }
-    const script = document.createElement("script")
-    script.src = "https://js.paystack.co/v1/inline.js"
-    script.async = true
-    script.onload = () => resolve()
-    script.onerror = () => reject(new Error("Paystack didn't load."))
-    document.body.appendChild(script)
-  })
-}
-
-declare global {
-  interface Window {
-    PaystackPop?: {
-      setup: (options: {
-        key: string
-        email: string
-        amount: number
-        ref: string
-        callback: (response: { reference: string }) => void
-        onClose: () => void
-      }) => { openIframe: () => void }
-    }
-  }
 }

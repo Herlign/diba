@@ -9,8 +9,8 @@ import { deliveryStartFromKey, lagosDateKey, PENDING_HOLD_MS, type PlanRule, typ
 import { checkoutSlotState } from "@/lib/checkout/capacity"
 import { priceCheckout, type CheckoutSlot } from "@/lib/checkout/price"
 import { signPassToken } from "@/lib/passes/token"
-import { paymentsMode, siteUrl } from "@/lib/site"
-import { initialisePaystack } from "@/lib/payments/paystack"
+import { paymentsMode } from "@/lib/site"
+import { payazaPublicKey } from "@/lib/payments/payaza"
 
 const inputSchema = z.object({
   slug: z.string().min(1),
@@ -245,6 +245,7 @@ export async function createPendingOrder(raw: PlaceOrderInput): Promise<PlacedOr
             },
             payment: {
               create: {
+                provider: paymentsMode() === "live" ? "PAYAZA" : "MOCK",
                 reference,
                 amountKobo: priced.totalKobo,
                 currency: "NGN",
@@ -281,20 +282,11 @@ export async function createPendingOrder(raw: PlaceOrderInput): Promise<PlacedOr
   if (!created) return { ok: false, error: "We couldn't reserve those seats. Try again." }
 
   const mode = paymentsMode()
-  if (mode === "live") {
-    try {
-      await initialisePaystack({
-        email,
-        amountKobo: created.totalKobo,
-        reference: created.reference,
-        callbackUrl: `${siteUrl()}/orders/${created.reference}?token=${created.accessToken}`,
-      })
-    } catch (error) {
-      await prisma.orderSlot.updateMany({ where: { orderId: created.id }, data: { status: "CANCELLED" } })
-      await prisma.order.update({ where: { id: created.id }, data: { status: "CANCELLED" } })
-      const message = error instanceof Error ? error.message : "Paystack did not start."
-      return { ok: false, error: message }
-    }
+  const publicKey = mode === "live" ? payazaPublicKey() : null
+  if (mode === "live" && !publicKey) {
+    await prisma.orderSlot.updateMany({ where: { orderId: created.id }, data: { status: "CANCELLED" } })
+    await prisma.order.update({ where: { id: created.id }, data: { status: "CANCELLED" } })
+    return { ok: false, error: "Payaza is not configured." }
   }
 
   return {
@@ -304,7 +296,7 @@ export async function createPendingOrder(raw: PlaceOrderInput): Promise<PlacedOr
     accessToken: created.accessToken,
     totalKobo: created.totalKobo,
     email,
-    publicKey: mode === "live" ? process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || null : null,
+    publicKey,
     programmeId: created.programmeId,
   }
 }
