@@ -25,7 +25,7 @@ npm start
 
 Ordering lives at `/p/<slug>` (for example `/p/reboot-camp-2026`) and a short code redirects from `/c/REBOOT26`. Review is `/p/<slug>/review`, checkout is `/p/<slug>/checkout`, and a paid order opens at `/orders/<reference>?token=...`. My orders is `/my-orders`.
 
-`PAYMENTS_MODE=mock` reserves the seats and shows a "Mark as paid" step. No card is charged. Set `PAYMENTS_MODE=live` with `PAYSTACK_SECRET_KEY` and `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` to open Paystack Popup. The webhook is `https://<host>/api/paystack/webhook` (HMAC SHA512 of the raw body). For a local webhook, tunnel with ngrok and paste that HTTPS URL into the Paystack dashboard. Point Paystack at the test secret.
+`PAYMENTS_MODE=mock` reserves the seats and shows a "Mark as paid" step. No card is charged. Mock stays the default when the Payaza keys are missing. Set `PAYMENTS_MODE=live` with `NEXT_PUBLIC_PAYAZA_PUBLIC_KEY`, `NEXT_PUBLIC_PAYAZA_MODE` (`Test` or `Live`), and `PAYAZA_SECRET_KEY` to open Payaza Checkout. The webhook is `https://www.dibameals.com/api/payaza/webhook` (base64 HMAC SHA512 of the raw body, header `x-payaza-signature`). For a local webhook, tunnel with ngrok and paste that HTTPS URL into the Payaza dashboard under Settings, Developers, for collections.
 
 Leave `RESEND_API_KEY` blank to print confirmation and magic-link emails in the server log. With a key, mail goes out through Resend from `EMAIL_FROM`.
 
@@ -48,15 +48,15 @@ See `.env.example` for the full list. Phase 1 only needs:
 | `DATABASE_URL` | PostgreSQL connection string |
 | `NEXT_PUBLIC_SITE_URL` | Canonical origin for metadata and the sitemap |
 | `NEXT_PUBLIC_WHATSAPP_E164` | WhatsApp support number, digits only |
-| `PAYMENTS_MODE` | `mock` until Paystack keys are set |
+| `PAYMENTS_MODE` | `mock` until Payaza is switched on with `live` |
 | `AUTH_SECRET` | Staff auth secret (used from phase 4) |
 | `PASS_TOKEN_SECRET` | HMAC secret for meal-pass QR tokens (phase 3) |
 
-Paystack, Resend, Cloudinary or Supabase Storage, and Google Maps are listed in `.env.example` and stay empty in mock mode.
+Payaza, Resend, Cloudinary or Supabase Storage, and Google Maps are listed in `.env.example` and stay empty in mock mode.
 
 **Google Maps:** restrict `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` by HTTP referrer in Google Cloud (your production domain and `http://localhost:4317/*`). Keep `GOOGLE_MAPS_API_KEY` server-side only. Places autocomplete is for admin venue setup, not the public site.
 
-**Paystack:** use test keys from the Paystack dashboard. Set the webhook to `https://<host>/api/paystack/webhook` (that route arrives in phase 3). For local webhooks, tunnel with ngrok and paste the HTTPS URL into Paystack. `PAYMENTS_MODE=mock` lets the later checkout be demoed without keys.
+**Payaza:** create a public key and a secret in the Payaza dashboard (Settings, Developers). `NEXT_PUBLIC_PAYAZA_PUBLIC_KEY` is the public key: the checkout uses it raw as `merchant_key`, and the server base64-encodes that same public key as `Authorization: Payaza <key>` on the merchant-reference status query. `PAYAZA_SECRET_KEY` is the webhook HMAC secret and stays on the server. Set the collections webhook to `https://www.dibameals.com/api/payaza/webhook`. `NEXT_PUBLIC_PAYAZA_MODE` is `Test` or `Live` and must match the key; it defaults to `Test`. `PAYMENTS_MODE=mock` lets checkout be demoed without keys.
 
 **Images:** seed files live in `public/images`. The manager uploads new photos from the admin menu. Uploads go to Vercel Blob (`BLOB_READ_WRITE_TOKEN`) and the public URL is stored on the dish. Without that token the form explains what to set up and the rest of the save still works. `next/image` is allowed to load `*.public.blob.vercel-storage.com`.
 
@@ -100,13 +100,13 @@ Turning an account off stops the next sign-in. A password change replaces the pa
 
 ## Deploy
 
-Production target is Vercel, with Postgres on Neon or Supabase. Paystack, Resend, and the hold-release cron are configured after the first deploy.
+Production target is Vercel, with Postgres on Neon or Supabase. Payaza, Resend, and the hold-release cron are configured after the first deploy.
 
 1. Create a Postgres database. Copy its connection string into `DATABASE_URL`. It must include `?sslmode=require` on Neon and Supabase.
 2. Push this repo to GitHub and import it in Vercel. Framework preset: Next.js. Set the env vars below in the Vercel project before the first build.
 3. `NEXT_PUBLIC_SITE_URL` must be the real `https://` origin. Vercel bakes `NEXT_PUBLIC_*` at build time, so change it and redeploy if the domain moves.
 4. The production build runs `prisma migrate deploy && next build`. Migrations are additive. On an empty database, run `npx prisma db seed` once, then replace the seed staff from `/admin/staff` and turn those accounts off. **Never run seed against a database that already has orders.** `npm run content:update` only inserts catalogue rows and website blocks that are missing. It will not overwrite admin edits or archive dishes and programmes created in the admin. Homepage wording is stored by migration, using the previous copy, so a saved headline is left as it is.
-5. Paystack: create live keys. Set `PAYMENTS_MODE=live`, `PAYSTACK_SECRET_KEY`, and `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`. In the Paystack dashboard set the webhook to `https://<domain>/api/paystack/webhook`. Paystack signs the raw body with HMAC SHA512. The handler rejects a bad signature and applies a successful charge only once, and only when the amount in kobo and the currency are NGN matching the order.
+5. Payaza: create live keys. Set `PAYMENTS_MODE=live`, `NEXT_PUBLIC_PAYAZA_PUBLIC_KEY`, `NEXT_PUBLIC_PAYAZA_MODE=Live`, and `PAYAZA_SECRET_KEY`. In the Payaza dashboard set the collections webhook to `https://www.dibameals.com/api/payaza/webhook`. Payaza signs the raw body with HMAC SHA512 and sends base64 in `x-payaza-signature`. The handler rejects a bad signature, asks Payaza for the transaction status with the public key, and applies a successful charge only once, and only when the amount in kobo and the currency are NGN matching the order. The status figure is `amount_received` in naira. A mismatch is held for review and is not marked paid.
 6. Resend: verify the sending domain, then set `RESEND_API_KEY` and `EMAIL_FROM` to an address on that domain, such as `Diba Meals <orders@yourdomain>`. With no key, mail is printed to the server log and the magic link is shown on the page.
 7. Cron: call `GET https://<domain>/api/cron/release-holds` every 10 minutes with header `Authorization: Bearer <CRON_SECRET>`. Vercel Cron can hit that path. It cancels `PENDING_PAYMENT` orders older than 30 minutes so the seat is free. The seat count already ignores those holds. The cron just closes the rows.
 8. Google Maps: restrict `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` by HTTP referrer to the production domain. Keep `GOOGLE_MAPS_API_KEY` server-side. Places is for admin venue setup.
@@ -120,8 +120,8 @@ Production target is Vercel, with Postgres on Neon or Supabase. Paystack, Resend
 - [ ] Seed accounts are removed or their passwords changed
 - [ ] `AUTH_SECRET` and `PASS_TOKEN_SECRET` are long random strings, not the dev placeholders
 - [ ] `NEXT_PUBLIC_SITE_URL` is the production origin
-- [ ] `PAYMENTS_MODE=live` and both Paystack keys are the live pair
-- [ ] Paystack webhook URL is saved and a test charge updates one order once
+- [ ] `PAYMENTS_MODE=live`, `NEXT_PUBLIC_PAYAZA_MODE=Live`, and the Payaza public key and secret are the live pair
+- [ ] Payaza webhook URL is `https://www.dibameals.com/api/payaza/webhook` and a test charge updates one order once
 - [ ] Resend domain is verified and a confirmation email arrives
 - [ ] Cron hits `/api/cron/release-holds` with `CRON_SECRET`
 - [ ] Maps key is referrer-restricted
@@ -137,8 +137,9 @@ Production target is Vercel, with Postgres on Neon or Supabase. Paystack, Resend
 | `AUTH_SECRET` | Yes |
 | `PASS_TOKEN_SECRET` | Yes |
 | `PAYMENTS_MODE` | Yes (`live` or `mock`) |
-| `PAYSTACK_SECRET_KEY` | Yes when live |
-| `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | Yes when live |
+| `NEXT_PUBLIC_PAYAZA_PUBLIC_KEY` | Yes when live. Public. Browser `merchant_key`, and base64 for the status query |
+| `NEXT_PUBLIC_PAYAZA_MODE` | Yes when live. `Test` or `Live`. Defaults to `Test` |
+| `PAYAZA_SECRET_KEY` | Yes when live. Secret. Webhook HMAC only |
 | `RESEND_API_KEY` | Yes, to send mail |
 | `EMAIL_FROM` | Yes, on the verified domain |
 | `CRON_SECRET` | Yes |
@@ -153,6 +154,6 @@ Production target is Vercel, with Postgres on Neon or Supabase. Paystack, Resend
 
 1. Foundation
 2. Programme page, day × period grid, menu, plans, cart, priced review, business-rule tests
-3. Checkout, Paystack and mock mode, webhook, meal passes, email, my orders
+3. Checkout, Payaza and mock mode, webhook, meal passes, email, my orders
 4. Admin, kitchen sheet, dispatch scanner, promo codes
 5. SEO and OG images, analytics, rate limits, security headers, Playwright, deploy guide (this app)

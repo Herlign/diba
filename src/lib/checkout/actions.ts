@@ -7,7 +7,8 @@ import { tokensMatch } from "@/lib/secret-match"
 import { paymentsMode } from "@/lib/site"
 import { createPendingOrder, type PlaceOrderInput } from "@/lib/checkout/create-order"
 import { applyChargeSuccess } from "@/lib/payments/apply"
-import { fetchPaystackTransaction } from "@/lib/payments/paystack"
+import { payazaCheckoutPhone, splitCustomerName } from "@/lib/payments/customer"
+import { isPayazaPaid, loadPayazaTransaction, payazaConnectionMode, payazaPublicKey } from "@/lib/payments/payaza"
 import { sendOrderConfirmation } from "@/lib/email/order-confirmation"
 
 async function clientKey() {
@@ -26,24 +27,32 @@ export async function getPaymentSheet(reference: string, accessToken: string) {
   const order = await prisma.order.findUnique({
     where: { reference },
     select: {
+      id: true,
       reference: true,
       accessToken: true,
       status: true,
       totalKobo: true,
       needsReview: true,
-      attendee: { select: { email: true } },
+      attendee: { select: { email: true, fullName: true, phone: true } },
     },
   })
   if (!order || !tokensMatch(order.accessToken, accessToken)) return { ok: false as const, error: "We couldn't find that payment." }
+  const name = splitCustomerName(order.attendee.fullName)
+  const live = paymentsMode() === "live"
   return {
     ok: true as const,
     mode: paymentsMode(),
     reference: order.reference,
+    orderId: order.id,
     status: order.status,
     totalKobo: order.totalKobo,
     email: order.attendee.email,
+    firstName: name.firstName,
+    lastName: name.lastName,
+    phone: payazaCheckoutPhone(order.attendee.phone),
     needsReview: order.needsReview,
-    publicKey: paymentsMode() === "live" ? process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || null : null,
+    publicKey: live ? payazaPublicKey() : null,
+    connectionMode: payazaConnectionMode(),
     href: `/orders/${order.reference}?token=${order.accessToken}`,
   }
 }
@@ -80,9 +89,13 @@ export async function verifyPayment(reference: string, accessToken: string) {
   if (!order || !tokensMatch(order.accessToken, accessToken)) {
     return { ok: false as const, error: "We couldn't find that payment." }
   }
-  const remote = await fetchPaystackTransaction(order.paystackReference ?? order.reference)
-  if (!remote || remote.status !== "success") {
-    return { ok: false as const, error: "Paystack has not confirmed this payment yet." }
+  try {
+    const remote = await loadPayazaTransaction(order.paystackReference ?? order.reference)
+    if (!remote || !isPayazaPaid(remote.status)) {
+      return { ok: false as const, error: "Payaza has not confirmed this payment yet." }
+    }
+    return settle(reference, accessToken, { amountKobo: remote.amountKobo, currency: remote.currency })
+  } catch {
+    return { ok: false as const, error: "We couldn't check that payment. Try again." }
   }
-  return settle(reference, accessToken, { amountKobo: remote.amountKobo, currency: remote.currency })
 }

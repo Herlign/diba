@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { decideChargeSuccess, nextPaymentState, type OrderPaymentState } from "@/lib/payments/decide"
-import { signPaystackBody, verifyPaystackSignature } from "@/lib/payments/signature"
+import { createHmac } from "node:crypto"
+import { signPayazaBody, verifyPayazaSignature } from "@/lib/payments/signature"
 
 const pending: OrderPaymentState = {
   status: "PENDING_PAYMENT",
@@ -52,12 +53,18 @@ describe("webhook idempotency", () => {
     ).toMatchObject({ type: "flag_review" })
   })
 
-  it("checks the Paystack signature against the raw body", () => {
-    const raw = JSON.stringify({ event: "charge.success", data: { amount: 700_000 } })
-    const signature = signPaystackBody(raw, "sk_test_secret")
-    expect(verifyPaystackSignature(raw, signature, "sk_test_secret")).toBe(true)
-    expect(verifyPaystackSignature(raw, signature, "wrong")).toBe(false)
-    expect(verifyPaystackSignature(`${raw} `, signature, "sk_test_secret")).toBe(false)
-    expect(verifyPaystackSignature(raw, null, "sk_test_secret")).toBe(false)
+  it("checks the Payaza signature against the raw body", () => {
+    const raw = JSON.stringify({ transaction_reference: "DM-CROSS26-00001", amount_received: 20.28 })
+    const secret = "payaza-webhook-secret"
+    const signature = createHmac("sha512", secret).update(raw, "utf8").digest("base64")
+    expect(signPayazaBody(raw, secret)).toBe(signature)
+    expect(signature).toMatch(/^[A-Za-z0-9+/]+=*$/)
+    expect(verifyPayazaSignature(raw, signature, secret)).toBe(true)
+    expect(verifyPayazaSignature(raw, ` ${signature} `, secret)).toBe(true)
+    expect(verifyPayazaSignature(raw, signature, "wrong")).toBe(false)
+    expect(verifyPayazaSignature(`${raw} `, signature, secret)).toBe(false)
+    expect(verifyPayazaSignature(raw, null, secret)).toBe(false)
+    expect(verifyPayazaSignature(raw, signature, "")).toBe(false)
+    expect(verifyPayazaSignature(raw, signature.slice(0, 20), secret)).toBe(false)
   })
 })

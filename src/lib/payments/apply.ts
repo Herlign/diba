@@ -4,6 +4,7 @@ import { decideChargeSuccess, type PaymentEvent } from "@/lib/payments/decide"
 
 export async function applyChargeSuccess(reference: string, event: PaymentEvent) {
   return prisma.$transaction(async (tx) => {
+    // paystackReference keeps the merchant reference. The column name is historical.
     const locked = await tx.$queryRaw<{ id: string }[]>`
       SELECT id FROM "Order"
       WHERE "paystackReference" = ${reference} OR reference = ${reference}
